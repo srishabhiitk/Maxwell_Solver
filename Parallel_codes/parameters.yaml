@@ -1,0 +1,21 @@
+{   # Dimensions of the domain
+    "X Length": 102,
+    "Y Length": 102,
+    "Z Length": 102,
+    # Choose the grid sizes as indexes from the list below so as to allow for Multigrid operations
+    # 2D simulations can be run by setting Y Index to 0
+    # [1, 4, 6, 10, 18, 34, 66, 130, 258, 514, 1026, 2050]
+    #  0  1  2  3   4   5   6    7    8    9    10    11
+    "X Resolution": 0.001,
+    "Y Resolution": 0.001,
+    "Z Resolution": 0.001,
+
+    "Courant factor": 0.57735026919,
+
+    "Number of timesteps": 3
+}
+
+{   # Parellelization parameters
+    "X Number of Procs": 4,
+    "Y Number of Procs": 2
+}
