@@ -8,7 +8,7 @@
 #include "field.h"
 #include "grid.h"
 #include "hdf5.h"
-// using namespace H5;
+//using namespace H5;
 
 class writer {
     private:

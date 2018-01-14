@@ -80,6 +80,7 @@ int main() {
     source = int(inputData.Nx/2), int(inputData.Ny/2), int(inputData.Nz/2);
 
     writer Ez_writer("Ez_data.h", gridData, E->Vz);
+    // Ez_writer.closeWriter();
 
 
     for (t=0; t<num_timesteps; t++){
@@ -180,6 +181,8 @@ int main() {
 
 
     }
+    Ez_writer.writeHDF5(1);
+    Ez_writer.closeWriter();
 
     MPI_Finalize();
 

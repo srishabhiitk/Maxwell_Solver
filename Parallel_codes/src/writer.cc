@@ -70,7 +70,7 @@ writer::writer(const char *fileName, const grid &mesh, field *iField): mesh(mesh
         }
         if (mesh.rankData.yRank==0){
             locSize[1] = locSize[1]+1;
-            locOffset[1] = 1;
+            locOffset[1] = 0;
         }
     }
 
@@ -85,9 +85,9 @@ writer::writer(const char *fileName, const grid &mesh, field *iField): mesh(mesh
 
 
     //Now preparing the bigger dataspace in which the data from source will be written to
-    gloSize[0] = mesh.local_colloq_x;
-    gloSize[1] = mesh.local_colloq_y;
-    gloSize[2] = mesh.local_colloq_z;
+    gloSize[0] = mesh.inputData.Nx;
+    gloSize[1] = mesh.inputData.Ny;
+    gloSize[2] = mesh.inputData.Nz;
 
     if (outField->xStag){
         gloSize[0] = gloSize[0]-1;
@@ -112,6 +112,10 @@ writer::writer(const char *fileName, const grid &mesh, field *iField): mesh(mesh
         }
         exit(0);
     }
+    std::cout<<"Processor:"<<mesh.rankData.rank<<", Global size: "<<gloSize[0]<<","<<gloSize[1]<<","<<gloSize[2]<<std::endl;
+    std::cout<<"Processor:"<<mesh.rankData.rank<<", Local size: "<<locSize[0]<<","<<locSize[1]<<","<<locSize[2]<<std::endl;
+    std::cout<<"Processor:"<<mesh.rankData.rank<<", Global offset: "<<gloOffset[0]<<","<<gloOffset[1]<<","<<gloOffset[2]<<std::endl;
+    std::cout<<"Processor:"<<mesh.rankData.rank<<", Local offset: "<<locOffset[0]<<","<<locOffset[1]<<","<<locOffset[2]<<std::endl;
 }
 
 
