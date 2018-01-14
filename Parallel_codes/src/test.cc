@@ -79,7 +79,7 @@ int main() {
     blitz::TinyVector<int,3> source;
     source = int(inputData.Nx/2), int(inputData.Ny/2), int(inputData.Nz/2);
 
-    writer Ez_writer("Ez_data.h", gridData, E->Vz);
+    writer Ez_writer("Ez_data.h5", gridData, E->Vz);
     // Ez_writer.closeWriter();
 
 
