@@ -12,7 +12,7 @@
 
     "Courant factor": 0.57735026919,
 
-    "Number of timesteps": 3
+    "Number of timesteps": 201
 }
 
 {   # Parellelization parameters

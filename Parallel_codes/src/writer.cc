@@ -112,10 +112,10 @@ writer::writer(const char *fileName, const grid &mesh, field *iField): mesh(mesh
         }
         exit(0);
     }
-    std::cout<<"Processor:"<<mesh.rankData.rank<<", Global size: "<<gloSize[0]<<","<<gloSize[1]<<","<<gloSize[2]<<std::endl;
-    std::cout<<"Processor:"<<mesh.rankData.rank<<", Local size: "<<locSize[0]<<","<<locSize[1]<<","<<locSize[2]<<std::endl;
-    std::cout<<"Processor:"<<mesh.rankData.rank<<", Global offset: "<<gloOffset[0]<<","<<gloOffset[1]<<","<<gloOffset[2]<<std::endl;
-    std::cout<<"Processor:"<<mesh.rankData.rank<<", Local offset: "<<locOffset[0]<<","<<locOffset[1]<<","<<locOffset[2]<<std::endl;
+    // std::cout<<"Processor:"<<mesh.rankData.rank<<", Global size: "<<gloSize[0]<<","<<gloSize[1]<<","<<gloSize[2]<<std::endl;
+    // std::cout<<"Processor:"<<mesh.rankData.rank<<", Local size: "<<locSize[0]<<","<<locSize[1]<<","<<locSize[2]<<std::endl;
+    // std::cout<<"Processor:"<<mesh.rankData.rank<<", Global offset: "<<gloOffset[0]<<","<<gloOffset[1]<<","<<gloOffset[2]<<std::endl;
+    // std::cout<<"Processor:"<<mesh.rankData.rank<<", Local offset: "<<locOffset[0]<<","<<locOffset[1]<<","<<locOffset[2]<<std::endl;
 }
 
 
@@ -147,6 +147,8 @@ void writer::writeHDF5(double t) {
     }
 
     temp.str("");
+    H5Pclose(plist_id);
+    H5Dclose(dataSet);
 }
 
 
@@ -154,7 +156,5 @@ void writer::closeWriter(){
     // CLOSE/RELEASE RESOURCES
     H5Sclose(sourceDSpace);
     H5Sclose(targetDSpace);
-    H5Dclose(dataSet);
-    H5Pclose(plist_id);
     H5Fclose(fileHandle);
 }

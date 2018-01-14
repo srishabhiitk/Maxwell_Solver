@@ -176,12 +176,13 @@ int main() {
         local_max = blitz::max(Etotal->Vz->F);
 
 
-
-
+        if (t>=20&&t<=200&&(t%10==0)){
+            Ez_writer.writeHDF5(t);
+        }
 
 
     }
-    Ez_writer.writeHDF5(1);
+
     Ez_writer.closeWriter();
 
     MPI_Finalize();
