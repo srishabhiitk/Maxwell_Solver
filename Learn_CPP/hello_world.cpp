@@ -38,8 +38,11 @@ int main()
     blitz::Array<int,2> c(3,3);
     blitz::TinyVector<int, 3> tiny1;
     blitz::TinyVector<int, 3> tiny2;
-
+    int gg;
+    std::cout<<"Grabage value of gg:"<<gg<<std::endl;
+    std::cout<<"Grabage value of a[0][0]:"<<a(0,0)<<std::endl;
     a.resize(3,3);
+    std::cout<<"Grabage value of a[0][0]:"<<a(0,0)<<std::endl;
     b.resize(3,3);
     c.resize(0,0);
     // c(3,3);
@@ -47,6 +50,7 @@ int main()
     F.resize(3,3,3);
     F=0;
     a=0;
+    std::cout<<"Overwritten value of a[0][0]:"<<a(0,0)<<std::endl;
     a=1,2,3,4,5,6,7,8,9;
     b=2,3,4,5,6,7,1,2,3;
     std::cout << "a:" << std::endl;

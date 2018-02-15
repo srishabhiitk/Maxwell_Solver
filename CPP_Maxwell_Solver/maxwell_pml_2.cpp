@@ -3,10 +3,10 @@
 #include <math.h>
 #include <sys/time.h>
 #include <sstream>
-#include "H5Cpp.h"
-using namespace H5;
+// #include "H5Cpp.h"
+// using namespace H5;
 
-int num_processors=4;
+int num_processors=8;
 
 
 class field{
@@ -124,28 +124,28 @@ void curl_3d_adv(field *F, field *Fcurl1, field *Fcurl2, double dx, double dy, d
     // Fcurl2->intialize_to_zero();
     int i,j,k;
     if (F->staggered){
-      #pragma omp parallel for num_threads(num_processors)
-      for (i=0;i<N;i++){
-        for (j=0;j<(N-1);j++){
-          for (k=0;k<(N-1);k++){
+      #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+      for (int i=0;i<N;i++){
+        for (int j=0;j<(N-1);j++){
+          for (int k=0;k<(N-1);k++){
             Fcurl1->x(i,j,k)=(F->z(i,j+1,k)-F->z(i,j,k))/dy;
             Fcurl2->x(i,j,k)=(F->y(i,j,k+1)-F->y(i,j,k))/dz;
           }
         }
       }
-      #pragma omp parallel for num_threads(num_processors)
-      for (i=0;i<(N-1);i++){
-        for (j=0;j<N;j++){
-          for (k=0;k<(N-1);k++){
+      #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+      for (int i=0;i<(N-1);i++){
+        for (int j=0;j<N;j++){
+          for (int k=0;k<(N-1);k++){
             Fcurl1->y(i,j,k)=(F->x(i,j,k+1)-F->x(i,j,k))/dz;
             Fcurl2->y(i,j,k)=(F->z(i+1,j,k)-F->z(i,j,k))/dx;
           }
         }
       }
-      #pragma omp parallel for num_threads(num_processors)
-      for (i=0;i<(N-1);i++){
-        for (j=0;j<(N-1);j++){
-          for (k=0;k<N;k++){
+      #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+      for (int i=0;i<(N-1);i++){
+        for (int j=0;j<(N-1);j++){
+          for (int k=0;k<N;k++){
             Fcurl1->z(i,j,k)=(F->y(i+1,j,k)-F->y(i,j,k))/dx;
             Fcurl2->z(i,j,k)=(F->x(i,j+1,k)-F->x(i,j,k))/dy;
           }
@@ -153,28 +153,28 @@ void curl_3d_adv(field *F, field *Fcurl1, field *Fcurl2, double dx, double dy, d
       }
     }
     else{
-      #pragma omp parallel for num_threads(num_processors)
-      for (i=0;i<(N-1);i++){
-        for (j=1;j<(N-1);j++){
-          for (k=1;k<(N-1);k++){
+      #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+      for (int i=0;i<(N-1);i++){
+        for (int j=1;j<(N-1);j++){
+          for (int k=1;k<(N-1);k++){
             Fcurl1->x(i,j,k)=(F->z(i,j,k)-F->z(i,j-1,k))/dy;
             Fcurl2->x(i,j,k)=(F->y(i,j,k)-F->y(i,j,k-1))/dz;
           }
         }
       }
-      #pragma omp parallel for num_threads(num_processors)
-      for (i=1;i<(N-1);i++){
-        for (j=0;j<(N-1);j++){
-          for (k=1;k<(N-1);k++){
+      #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+      for (int i=1;i<(N-1);i++){
+        for (int j=0;j<(N-1);j++){
+          for (int k=1;k<(N-1);k++){
             Fcurl1->y(i,j,k)=(F->x(i,j,k)-F->x(i,j,k-1))/dz;
             Fcurl2->y(i,j,k)=(F->z(i,j,k)-F->z(i-1,j,k))/dx;
           }
         }
       }
-      #pragma omp parallel for num_threads(num_processors)
-      for (i=1;i<(N-1);i++){
-        for (j=1;j<(N-1);j++){
-          for (k=0;k<(N-1);k++){
+      #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+      for (int i=1;i<(N-1);i++){
+        for (int j=1;j<(N-1);j++){
+          for (int k=0;k<(N-1);k++){
             Fcurl1->z(i,j,k)=(F->y(i,j,k)-F->y(i-1,j,k))/dx;
             Fcurl2->z(i,j,k)=(F->x(i,j,k)-F->x(i,j-1,k))/dy;
           }
@@ -462,8 +462,8 @@ int c_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, double ma_p
 
 
 int main(){
-  int num_timesteps=301;
-  int N=102;
+  int num_timesteps=50;
+  int N=52;
   double epsilon0=8.85*pow(10,-12);
   double mew0=M_PI*4*pow(10,-7);
 
@@ -584,10 +584,10 @@ int main(){
   // Cb->x(shift(rd,0,-1))=Cb->x(shift(rd,0,-1))/pow(2,2);
 
 
-  //HDF5 file declaration
-  H5File file("Ezdata2.h5", H5F_ACC_TRUNC);
-	hsize_t dims[3];               // dataset dimensions
-  std::stringstream set_name;
+  // //HDF5 file declaration
+  // H5File file("Ezdata2.h5", H5F_ACC_TRUNC);
+	// hsize_t dims[3];               // dataset dimensions
+  // std::stringstream set_name;
 
 
 
@@ -620,10 +620,10 @@ int main(){
 
     curl_3d_adv(E,Ecurl1,Ecurl2,dx,dy,dz);
 
-    #pragma omp parallel for num_threads(num_processors)
-    for (i=0;i<N;i++){
-      for (j=0;j<(N-1);j++){
-        for (k=0;k<(N-1);k++){
+    #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+    for (int i=0;i<N;i++){
+      for (int j=0;j<(N-1);j++){
+        for (int k=0;k<(N-1);k++){
           psi_H1->x(i,j,k)=b_hy(j)*psi_H1->x(i,j,k)+c_hy(j)*Ecurl1->x(i,j,k);
           psi_H2->x(i,j,k)=b_hz(k)*psi_H2->x(i,j,k)+c_hz(k)*Ecurl2->x(i,j,k);
           H->x(i,j,k)=Da*H->x(i,j,k)-Db->x(i,j,k)*(Ecurl1->x(i,j,k)/k_hy(j)-Ecurl2->x(i,j,k)/k_hz(k))-Db->x(i,j,k)*(psi_H1->x(i,j,k)-psi_H2->x(i,j,k));
@@ -631,10 +631,10 @@ int main(){
       }
     }
 
-    #pragma omp parallel for num_threads(num_processors)
-    for (i=0;i<(N-1);i++){
-      for (j=0;j<N;j++){
-        for (k=0;k<(N-1);k++){
+    #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+    for (int i=0;i<(N-1);i++){
+      for (int j=0;j<N;j++){
+        for (int k=0;k<(N-1);k++){
           psi_H1->y(i,j,k)=b_hz(k)*psi_H1->y(i,j,k)+c_hz(k)*Ecurl1->y(i,j,k);
           psi_H2->y(i,j,k)=b_hx(i)*psi_H2->y(i,j,k)+c_hx(i)*Ecurl2->y(i,j,k);
           H->y(i,j,k)=Da*H->y(i,j,k)-Db->y(i,j,k)*(Ecurl1->y(i,j,k)/k_hz(k)-Ecurl2->y(i,j,k)/k_hx(i))-Db->y(i,j,k)*(psi_H1->y(i,j,k)-psi_H2->y(i,j,k));
@@ -642,10 +642,10 @@ int main(){
       }
     }
 
-    #pragma omp parallel for num_threads(num_processors)
-    for (i=0;i<(N-1);i++){
-      for (j=0;j<(N-1);j++){
-        for (k=0;k<N;k++){
+    #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+    for (int i=0;i<(N-1);i++){
+      for (int j=0;j<(N-1);j++){
+        for (int k=0;k<N;k++){
           psi_H1->z(i,j,k)=b_hx(i)*psi_H1->z(i,j,k)+c_hx(i)*Ecurl1->z(i,j,k);
           psi_H2->z(i,j,k)=b_hy(j)*psi_H2->z(i,j,k)+c_hy(j)*Ecurl2->z(i,j,k);
           H->z(i,j,k)=Da*H->z(i,j,k)-Db->z(i,j,k)*(Ecurl1->z(i,j,k)/k_hx(i)-Ecurl2->z(i,j,k)/k_hy(j))-Db->z(i,j,k)*(psi_H1->z(i,j,k)-psi_H2->z(i,j,k));
@@ -658,10 +658,10 @@ int main(){
 
     curl_3d_adv(H,Hcurl1,Hcurl2,dx,dy,dz);
 
-    #pragma omp parallel for num_threads(num_processors)
-    for (i=0;i<(N-1);i++){
-      for (j=0;j<N;j++){
-        for (k=0;k<N;k++){
+    #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+    for (int i=0;i<(N-1);i++){
+      for (int j=0;j<N;j++){
+        for (int k=0;k<N;k++){
           psi_E1->x(i,j,k)=b_ey(j)*psi_E1->x(i,j,k)+c_ey(j)*Hcurl1->x(i,j,k);
           psi_E2->x(i,j,k)=b_ez(k)*psi_E2->x(i,j,k)+c_ez(k)*Hcurl2->x(i,j,k);
           E->x(i,j,k)=Ca*E->x(i,j,k)+Cb->x(i,j,k)*(Hcurl1->x(i,j,k)/k_ey(j)-Hcurl2->x(i,j,k)/k_ez(k))+Cb->x(i,j,k)*(psi_E1->x(i,j,k)-psi_E2->x(i,j,k));
@@ -669,10 +669,10 @@ int main(){
       }
     }
 
-    #pragma omp parallel for num_threads(num_processors)
-    for (i=0;i<N;i++){
-      for (j=0;j<(N-1);j++){
-        for (k=0;k<N;k++){
+    #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+    for (int i=0;i<N;i++){
+      for (int j=0;j<(N-1);j++){
+        for (int k=0;k<N;k++){
           psi_E1->y(i,j,k)=b_ez(k)*psi_E1->y(i,j,k)+c_ez(k)*Hcurl1->y(i,j,k);
           psi_E2->y(i,j,k)=b_ex(i)*psi_E2->y(i,j,k)+c_ex(i)*Hcurl2->y(i,j,k);
           E->y(i,j,k)=Ca*E->y(i,j,k)+Cb->y(i,j,k)*(Hcurl1->y(i,j,k)/k_ez(k)-Hcurl2->y(i,j,k)/k_ex(i))+Cb->y(i,j,k)*(psi_E1->y(i,j,k)-psi_E2->y(i,j,k));
@@ -680,10 +680,10 @@ int main(){
       }
     }
 
-    #pragma omp parallel for num_threads(num_processors)
-    for (i=0;i<N;i++){
-      for (j=0;j<N;j++){
-        for (k=0;k<(N-1);k++){
+    #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+    for (int i=0;i<N;i++){
+      for (int j=0;j<N;j++){
+        for (int k=0;k<(N-1);k++){
           psi_E1->z(i,j,k)=b_ex(i)*psi_E1->z(i,j,k)+c_ex(i)*Hcurl1->z(i,j,k);
           psi_E2->z(i,j,k)=b_ey(j)*psi_E2->z(i,j,k)+c_ey(j)*Hcurl2->z(i,j,k);
           E->z(i,j,k)=Ca*E->z(i,j,k)+Cb->z(i,j,k)*(Hcurl1->z(i,j,k)/k_ex(i)-Hcurl2->z(i,j,k)/k_ey(j))+Cb->z(i,j,k)*(psi_E1->z(i,j,k)-psi_E2->z(i,j,k));
@@ -694,10 +694,10 @@ int main(){
 
 
 
-    #pragma omp parallel for num_threads(num_processors)
-    for (i=0;i<(N-1);i++){
-      for (j=0;j<(N-1);j++){
-        for (k=0;k<(N-1);k++){
+    #pragma omp parallel for num_threads(num_processors) schedule(dynamic)
+    for (int i=0;i<(N-1);i++){
+      for (int j=0;j<(N-1);j++){
+        for (int k=0;k<(N-1);k++){
           Etotal->z(i,j,k)=E->z(i,j,k)*E->z(i,j,k)+E->y(i,j,k)*E->y(i,j,k)+E->x(i,j,k)*E->x(i,j,k);
         }
       }

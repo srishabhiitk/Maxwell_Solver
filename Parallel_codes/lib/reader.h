@@ -18,6 +18,7 @@ class reader {
         int Nx;
         int Ny;
         int Nz;
+        int n_threads;
 
 
         reader();

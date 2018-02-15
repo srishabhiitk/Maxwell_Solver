@@ -34,6 +34,7 @@ void reader::readYAML() {
     parser.GetNextDocument(yamlNode);
     yamlNode["X Number of Procs"] >> npX;
     yamlNode["Y Number of Procs"] >> npY;
+    yamlNode["Number of Threads per node"] >> n_threads;
 
     inFile.close();
 }

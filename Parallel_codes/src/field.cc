@@ -21,7 +21,14 @@ field::field(const grid &gridData, bool xStag_, bool yStag_, bool zStag_): gridD
   }
 
   F.resize(local_Nx,local_Ny,local_Nz);
-  F=0.0;
+  #pragma omp parallel for num_threads(gridData.inputData.n_threads) schedule(dynamic)
+  for (int i=0;i<local_Nx;i++){
+      for (int j=0;j<local_Ny;j++){
+          for (int k=0;k<local_Nz;k++){
+            F(i,j,k) = 0;
+          }
+      }
+  }
 
   mpiHandle = new mpidata(F, xStag, yStag, gridData.rankData, gridData);
   mpiHandle->createSubarrays(xStag, yStag, zStag);

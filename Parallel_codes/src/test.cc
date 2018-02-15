@@ -7,6 +7,7 @@
 #include "vfield.h"
 #include "writer.h"
 #include <sstream>
+#include <sys/time.h>
 
 
 
@@ -49,6 +50,7 @@ int main() {
     grid gridData(inputData, mpi);
 
 
+    int n_threads = inputData.n_threads;
     int num_timesteps = inputData.num_timesteps;
     double epsilon0 = 8.85*pow(10,-12);
     double mew0 = M_PI*4*pow(10,-7);
@@ -61,11 +63,13 @@ int main() {
     double sigma=pow(10,0);
     double init=20.0;
     int t = 0; //timestep
-    int i,j,k; //loop vars
+    //int i,j,k; //loop vars
     int Nx = gridData.local_colloq_x;
     int Ny = gridData.local_colloq_y;
     int Nz = gridData.local_colloq_z;
     double local_max, max = 0;
+
+    struct timeval begin,end;
 
 
     vfield *E = new vfield(gridData,false);
@@ -79,49 +83,51 @@ int main() {
     blitz::TinyVector<int,3> source;
     source = int(inputData.Nx/2), int(inputData.Ny/2), int(inputData.Nz/2);
 
-    writer Ez_writer("Ez_data.h5", gridData, E->Vz);
+    //writer Ez_writer("Ez_data.h5", gridData, E->Vz);
     // Ez_writer.closeWriter();
 
-
+    gettimeofday(&begin,NULL);
     for (t=0; t<num_timesteps; t++){
 
-        if (t==0){
-            if (check_global_limits(source, gridData, false, false)){
-                E->Vz->F(global_to_local(source, gridData))=exp(-pow(-init+t,2)/sigma);
-            }
-        }
+        // if (t==0){
+        //     if (check_global_limits(source, gridData, false, false)){
+        //         E->Vz->F(global_to_local(source, gridData))=exp(-pow(-init+t,2)/sigma);
+        //     }
+        // }
 
 
-        MPI_Reduce(&local_max, &max, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        // std::cout<<"Processor: "<<mpi.rank<<", max: "<<local_max<<std::endl;
-        // MPI_Barrier( MPI_COMM_WORLD );
-        if (mpi.rank==0){
-            std::cout<<"t: "<<t<<", max: "<<max<<std::endl;
-            // std::cout<<std::endl;
-        }
+        // MPI_Reduce(&local_max, &max, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+        // if (mpi.rank==0){
+        //     std::cout<<"t: "<<t<<", max: "<<max<<std::endl;
+        //     // std::cout<<std::endl;
+        // }
 
 
         E->curl_3d(Ecurl);
 
-        for (i=0;i<Nx;i++){
-          for (j=0;j<(Ny-1);j++){
-            for (k=0;k<(Nz-1);k++){
+        #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
+        for (int i=0;i<Nx;i++){
+          for (int j=0;j<(Ny-1);j++){
+            for (int k=0;k<(Nz-1);k++){
               H->Vx->F(i,j,k)=Da*H->Vx->F(i,j,k)-Db*Ecurl->Vx->F(i,j,k);
             }
           }
         }
 
-        for (i=0;i<(Nx-1);i++){
-          for (j=0;j<Ny;j++){
-            for (k=0;k<(Nz-1);k++){
+        #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
+        for (int i=0;i<(Nx-1);i++){
+          for (int j=0;j<Ny;j++){
+            for (int k=0;k<(Nz-1);k++){
               H->Vy->F(i,j,k)=Da*H->Vy->F(i,j,k)-Db*Ecurl->Vy->F(i,j,k);
             }
           }
         }
 
-        for (i=0;i<(Nx-1);i++){
-          for (j=0;j<(Ny-1);j++){
-            for (k=0;k<Nz;k++){
+        #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
+        for (int i=0;i<(Nx-1);i++){
+          for (int j=0;j<(Ny-1);j++){
+            for (int k=0;k<Nz;k++){
               H->Vz->F(i,j,k)=Da*H->Vz->F(i,j,k)-Db*Ecurl->Vz->F(i,j,k);
             }
           }
@@ -129,25 +135,28 @@ int main() {
 
         H->curl_3d(Hcurl);
 
-        for (i=0;i<(Nx-1);i++){
-          for (j=0;j<Ny;j++){
-            for (k=0;k<Nz;k++){
+        #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
+        for (int i=0;i<(Nx-1);i++){
+          for (int j=0;j<Ny;j++){
+            for (int k=0;k<Nz;k++){
               E->Vx->F(i,j,k)=Ca*E->Vx->F(i,j,k)+Cb*Hcurl->Vx->F(i,j,k);
             }
           }
         }
 
-        for (i=0;i<Nx;i++){
-          for (j=0;j<(Ny-1);j++){
-            for (k=0;k<Nz;k++){
+        #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
+        for (int i=0;i<Nx;i++){
+          for (int j=0;j<(Ny-1);j++){
+            for (int k=0;k<Nz;k++){
               E->Vy->F(i,j,k)=Ca*E->Vy->F(i,j,k)+Cb*Hcurl->Vy->F(i,j,k);
             }
           }
         }
 
-        for (i=0;i<Nx;i++){
-          for (j=0;j<Ny;j++){
-            for (k=0;k<(Nz-1);k++){
+        #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
+        for (int i=0;i<Nx;i++){
+          for (int j=0;j<Ny;j++){
+            for (int k=0;k<(Nz-1);k++){
               E->Vz->F(i,j,k)=Ca*E->Vz->F(i,j,k)+Cb*Hcurl->Vz->F(i,j,k);
             }
           }
@@ -156,9 +165,10 @@ int main() {
 
 
 
-        for (i=0;i<(Nx-1);i++){
-          for (j=0;j<(Ny-1);j++){
-            for (k=0;k<(Nz-1);k++){
+        #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
+        for (int i=0;i<(Nx-1);i++){
+          for (int j=0;j<(Ny-1);j++){
+            for (int k=0;k<(Nz-1);k++){
               Etotal->Vz->F(i,j,k)=E->Vz->F(i,j,k)*E->Vz->F(i,j,k)+E->Vy->F(i,j,k)*E->Vy->F(i,j,k)+E->Vx->F(i,j,k)*E->Vx->F(i,j,k);
             }
           }
@@ -175,15 +185,20 @@ int main() {
 
         local_max = blitz::max(Etotal->Vz->F);
 
-
+        /*
         if (t>=20&&t<=200&&(t%10==0)){
             Ez_writer.writeHDF5(t);
+        }
+        */
+        if (mpi.rank==0){
+            std::cout<<"t="<<t<<std::endl;
         }
 
 
     }
-
-    Ez_writer.closeWriter();
+    gettimeofday(&end,NULL);
+    std::cout<<"Time taken: "<<((end.tv_sec-begin.tv_sec)*1000000u + end.tv_usec - begin.tv_usec)/1.0e6<<" sec"<<std::endl;
+    //Ez_writer.closeWriter();
 
     MPI_Finalize();
 
