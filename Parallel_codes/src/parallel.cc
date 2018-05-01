@@ -19,7 +19,7 @@
     MPI_Comm_size(MPI_COMM_WORLD, &nProc);
 
     // ABORT IF THE NUMBER OF PROCESSORS IN EACH DIRECTION SPECIFIED IN INPUT DOES NOT MATCH WITH AVAILABLE CORES
-    if (npX*npY*iDat.n_threads != nProc) {
+    if (npX*npY != nProc) {
         if (rank == 0) {
             std::cout << "ERROR: Number of processors specified in input file does not match. Aborting" << std::endl;
         }

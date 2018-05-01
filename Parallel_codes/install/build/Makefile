@@ -56,17 +56,6 @@ CMAKE_BINARY_DIR = /home/rishabh/Maxwell_Solver/Parallel_codes/install/build
 #=============================================================================
 # Targets provided globally by CMake.
 
-# Special rule for the target rebuild_cache
-rebuild_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	/usr/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
-.PHONY : rebuild_cache
-
-# Special rule for the target rebuild_cache
-rebuild_cache/fast: rebuild_cache
-
-.PHONY : rebuild_cache/fast
-
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
@@ -77,6 +66,17 @@ edit_cache:
 edit_cache/fast: edit_cache
 
 .PHONY : edit_cache/fast
+
+# Special rule for the target rebuild_cache
+rebuild_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
+	/usr/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : rebuild_cache
+
+# Special rule for the target rebuild_cache
+rebuild_cache/fast: rebuild_cache
+
+.PHONY : rebuild_cache/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -111,17 +111,17 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named maxwell
+# Target rules for targets named EMsolver
 
 # Build rule for target.
-maxwell: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 maxwell
-.PHONY : maxwell
+EMsolver: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 EMsolver
+.PHONY : EMsolver
 
 # fast build rule for target.
-maxwell/fast:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/build
-.PHONY : maxwell/fast
+EMsolver/fast:
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/build
+.PHONY : EMsolver/fast
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/field.o: home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.o
 
@@ -129,7 +129,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/field.o: home/rishabh/Maxwell_Sol
 
 # target to build an object file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.o:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.o
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.o
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.o
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/field.i: home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.i
@@ -138,7 +138,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/field.i: home/rishabh/Maxwell_Sol
 
 # target to preprocess a source file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.i:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.i
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.i
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.i
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/field.s: home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.s
@@ -147,7 +147,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/field.s: home/rishabh/Maxwell_Sol
 
 # target to generate assembly for a file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.s:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.s
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.s
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/field.cc.s
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.o: home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.o
@@ -156,7 +156,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.o: home/rishabh/Maxwell_Solv
 
 # target to build an object file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.o:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.o
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.o
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.o
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.i: home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.i
@@ -165,7 +165,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.i: home/rishabh/Maxwell_Solv
 
 # target to preprocess a source file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.i:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.i
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.i
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.i
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.s: home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.s
@@ -174,8 +174,35 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.s: home/rishabh/Maxwell_Solv
 
 # target to generate assembly for a file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.s:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.s
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.s
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.cc.s
+
+home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.o: home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.o
+
+.PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.o
+
+# target to build an object file
+home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.o:
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.o
+.PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.o
+
+home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.i: home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.i
+
+.PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.i
+
+# target to preprocess a source file
+home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.i:
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.i
+.PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.i
+
+home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.s: home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.s
+
+.PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.s
+
+# target to generate assembly for a file
+home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.s:
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.s
+.PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc.s
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.o: home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.o
 
@@ -183,7 +210,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.o: home/rishabh/Maxwell_S
 
 # target to build an object file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.o:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.o
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.o
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.o
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.i: home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.i
@@ -192,7 +219,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.i: home/rishabh/Maxwell_S
 
 # target to preprocess a source file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.i:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.i
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.i
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.i
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.s: home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.s
@@ -201,7 +228,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.s: home/rishabh/Maxwell_S
 
 # target to generate assembly for a file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.s:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.s
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.s
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc.s
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.o: home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.o
@@ -210,7 +237,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.o: home/rishabh/Maxwell_
 
 # target to build an object file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.o:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.o
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.o
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.o
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.i: home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.i
@@ -219,7 +246,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.i: home/rishabh/Maxwell_
 
 # target to preprocess a source file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.i:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.i
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.i
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.i
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.s: home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.s
@@ -228,7 +255,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.s: home/rishabh/Maxwell_
 
 # target to generate assembly for a file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.s:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.s
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.s
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/parallel.cc.s
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.o: home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.o
@@ -237,7 +264,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.o: home/rishabh/Maxwell_So
 
 # target to build an object file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.o:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.o
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.o
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.o
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.i: home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.i
@@ -246,7 +273,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.i: home/rishabh/Maxwell_So
 
 # target to preprocess a source file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.i:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.i
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.i
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.i
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.s: home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.s
@@ -255,7 +282,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.s: home/rishabh/Maxwell_So
 
 # target to generate assembly for a file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.s:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.s
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.s
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/reader.cc.s
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/test.o: home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.o
@@ -264,7 +291,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/test.o: home/rishabh/Maxwell_Solv
 
 # target to build an object file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.o:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.o
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.o
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.o
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/test.i: home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.i
@@ -273,7 +300,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/test.i: home/rishabh/Maxwell_Solv
 
 # target to preprocess a source file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.i:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.i
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.i
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.i
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/test.s: home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.s
@@ -282,7 +309,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/test.s: home/rishabh/Maxwell_Solv
 
 # target to generate assembly for a file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.s:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.s
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.s
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/test.cc.s
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.o: home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.o
@@ -291,7 +318,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.o: home/rishabh/Maxwell_So
 
 # target to build an object file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.o:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.o
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.o
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.o
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.i: home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.i
@@ -300,7 +327,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.i: home/rishabh/Maxwell_So
 
 # target to preprocess a source file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.i:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.i
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.i
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.i
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.s: home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.s
@@ -309,7 +336,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.s: home/rishabh/Maxwell_So
 
 # target to generate assembly for a file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.s:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.s
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.s
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc.s
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.o: home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.o
@@ -318,7 +345,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.o: home/rishabh/Maxwell_So
 
 # target to build an object file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.o:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.o
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.o
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.o
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.i: home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.i
@@ -327,7 +354,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.i: home/rishabh/Maxwell_So
 
 # target to preprocess a source file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.i:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.i
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.i
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.i
 
 home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.s: home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.s
@@ -336,7 +363,7 @@ home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.s: home/rishabh/Maxwell_So
 
 # target to generate assembly for a file
 home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.s:
-	$(MAKE) -f CMakeFiles/maxwell.dir/build.make CMakeFiles/maxwell.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.s
+	$(MAKE) -f CMakeFiles/EMsolver.dir/build.make CMakeFiles/EMsolver.dir/home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.s
 .PHONY : home/rishabh/Maxwell_Solver/Parallel_codes/src/writer.cc.s
 
 # Help Target
@@ -345,15 +372,18 @@ help:
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
 	@echo "... depend"
-	@echo "... rebuild_cache"
 	@echo "... edit_cache"
-	@echo "... maxwell"
+	@echo "... rebuild_cache"
+	@echo "... EMsolver"
 	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/field.o"
 	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/field.i"
 	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/field.s"
 	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.o"
 	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.i"
 	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.s"
+	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.o"
+	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.i"
+	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.s"
 	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.o"
 	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.i"
 	@echo "... home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.s"

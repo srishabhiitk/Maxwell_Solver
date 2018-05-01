@@ -19,6 +19,8 @@ class reader {
         int Ny;
         int Nz;
         int n_threads;
+        bool isPlanar;
+        bool usePW;
 
 
         reader();

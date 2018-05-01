@@ -1,15 +1,12 @@
 {
     #Type of Solution
-    "isPlanar": true,
-
-    #applicable only when planar is true
-    "isTransverseElectric": true
+    "isPlanar": true
 }
 
 {   # Dimensions of the domain
-    "X Length": 42,
-    "Y Length": 42,
-    "Z Length": 42,
+    "X Length": 1002,
+    "Y Length": 1,
+    "Z Length": 1002,
 
 
     "X Resolution": 0.001,
@@ -18,11 +15,13 @@
 
     "Courant factor": 0.57735026919,
 
-    "Number of timesteps": 3
+    "Number of timesteps": 4000,
+
+    "Use Plane Wave": false
 }
 
 {   # Parellelization parameters
-    "X Number of Procs": 2,
-    "Y Number of Procs": 2,
-    "Number of Threads per node": 2
+    "X Number of Procs": 4,
+    "Y Number of Procs": 1,
+    "Number of Threads per node": 1
 }

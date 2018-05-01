@@ -3,8 +3,8 @@
 #include <math.h>
 #include <sys/time.h>
 #include <sstream>
-// #include "H5Cpp.h"
-// using namespace H5;
+#include "H5Cpp.h"
+using namespace H5;
 
 int num_processors=8;
 
@@ -462,8 +462,8 @@ int c_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, double ma_p
 
 
 int main(){
-  int num_timesteps=50;
-  int N=52;
+  int num_timesteps=301;
+  int N=100;
   double epsilon0=8.85*pow(10,-12);
   double mew0=M_PI*4*pow(10,-7);
 
@@ -584,10 +584,10 @@ int main(){
   // Cb->x(shift(rd,0,-1))=Cb->x(shift(rd,0,-1))/pow(2,2);
 
 
-  // //HDF5 file declaration
-  // H5File file("Ezdata2.h5", H5F_ACC_TRUNC);
-	// hsize_t dims[3];               // dataset dimensions
-  // std::stringstream set_name;
+  //HDF5 file declaration
+  H5File file("Ezdata2.h5", H5F_ACC_TRUNC);
+	hsize_t dims[3];               // dataset dimensions
+  std::stringstream set_name;
 
 
 
@@ -600,7 +600,8 @@ int main(){
       // E->y(N/2,N/2,N/2)=1.0/pow(3,0.5);
       // E->z(N/2,N/2,N/2)=1.0/pow(3,0.5);
       // E->z(N/2,N/2,N/2)=1.0;
-      E->z(N/2,N/2,N/2)=exp(-pow(-init+t,2)/sigma);
+      // E->z(N/2,N/2,N/2)=exp(-pow(-init+t,2)/sigma);
+      E->z(N/2,N/2,N/2)=sin(t/10.0*M_PI);
       // plane_wave_as_BC(E,N,t,dx,dy,dz,dt,c,sigma,init);
     }
 
@@ -709,7 +710,8 @@ int main(){
 
     // E->z(N/2,N/2,N/2)=1.0;
     // Eadv->z(N/2,N/2,N/2)=1.0;
-    E->z(N/2,N/2,N/2)=exp(-pow(-init+t,2)/sigma);
+    // E->z(N/2,N/2,N/2)=exp(-pow(-init+t,2)/sigma);
+    E->z(N/2,N/2,N/2)=sin(t/10.0*M_PI);
     // Eadv->z(N/2,N/2,N/2)=exp(-pow(-init+t,2)/sigma);
     // plane_wave_as_BC(E,N,t,dx,dy,dz,dt,c,sigma,init);
     // plane_wave_as_BC(Eadv,N,t,dx,dy,dz,dt,c,sigma,init);
@@ -731,17 +733,17 @@ int main(){
 
 
 
-    // //Writing to file
-    // if (t%3==0&&t>=10&&t<=300){
-    //   dims[0] = E->z.shape()[0];
-    // 	dims[1] = E->z.shape()[1];
-    //   dims[2] = E->z.shape()[2];
-    // 	DataSpace dataspace(3, dims);
-    //   set_name<<"tz"<<t;
-    // 	DataSet dataset = file.createDataSet(set_name.str(), PredType::NATIVE_DOUBLE, dataspace);
-    //   dataset.write(Etotal->z.data(), PredType::NATIVE_DOUBLE);
-    //   set_name.str("");
-    // }
+    //Writing to file
+    if (t%3==0&&t>=10&&t<=300){
+      dims[0] = E->z.shape()[0];
+    	dims[1] = E->z.shape()[1];
+      dims[2] = E->z.shape()[2];
+    	DataSpace dataspace(3, dims);
+      set_name<<"tz"<<t;
+    	DataSet dataset = file.createDataSet(set_name.str(), PredType::NATIVE_DOUBLE, dataspace);
+      dataset.write(Etotal->z.data(), PredType::NATIVE_DOUBLE);
+      set_name.str("");
+    }
 
 
     // std::cout<<E->z(blitz::Range(45,55),blitz::Range(45,55),N/2)<<std::endl;

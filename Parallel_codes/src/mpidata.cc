@@ -20,7 +20,7 @@ mpidata::mpidata(blitz::Array<double, 3> inputArray, bool xStag, bool yStag, con
         shareRanks(0) = MPI_PROC_NULL;
         shareRanks(1) = MPI_PROC_NULL;
     }
-    if (yStag){
+    if (yStag || gridData.isPlanar){
         shareRanks(2) = MPI_PROC_NULL;
         shareRanks(3) = MPI_PROC_NULL;
     }
@@ -70,7 +70,6 @@ void mpidata::createSubarrays(const bool xStag, const bool yStag, const bool zSt
     subSize = globSize;
 
 
-
     // Subarray for left side
     subSize(0) = 1;
     saStarts(0) = 1;
@@ -97,25 +96,28 @@ void mpidata::createSubarrays(const bool xStag, const bool yStag, const bool zSt
     saStarts = 0;
 
 
-    // Subarray for front side
-    subSize(1) = 1;
-    saStarts(1) = 1;
-    MPI_Type_create_subarray(3, globSize.data(), subSize.data(), saStarts.data(), MPI_ORDER_C, MPI_DOUBLE_PRECISION, &sendSubarrayY0);
-    MPI_Type_commit(&sendSubarrayY0);
+    if (!gridData.isPlanar){
+        // Subarray for front side
+        subSize(1) = 1;
+        saStarts(1) = 1;
+        MPI_Type_create_subarray(3, globSize.data(), subSize.data(), saStarts.data(), MPI_ORDER_C, MPI_DOUBLE_PRECISION, &sendSubarrayY0);
+        MPI_Type_commit(&sendSubarrayY0);
 
-    saStarts(1) = 0;
-    MPI_Type_create_subarray(3, globSize.data(), subSize.data(), saStarts.data(), MPI_ORDER_C, MPI_DOUBLE_PRECISION, &recvSubarrayY0);
-    MPI_Type_commit(&recvSubarrayY0);
 
-    // Subarray for back side
-    subSize(1) = 1;
-    saStarts(1) = globSize(1) - 2;
-    MPI_Type_create_subarray(3, globSize.data(), subSize.data(), saStarts.data(), MPI_ORDER_C, MPI_DOUBLE_PRECISION, &sendSubarrayY1);
-    MPI_Type_commit(&sendSubarrayY1);
+        saStarts(1) = 0;
+        MPI_Type_create_subarray(3, globSize.data(), subSize.data(), saStarts.data(), MPI_ORDER_C, MPI_DOUBLE_PRECISION, &recvSubarrayY0);
+        MPI_Type_commit(&recvSubarrayY0);
 
-    saStarts(1) = globSize(1) - 1;
-    MPI_Type_create_subarray(3, globSize.data(), subSize.data(), saStarts.data(), MPI_ORDER_C, MPI_DOUBLE_PRECISION, &recvSubarrayY1);
-    MPI_Type_commit(&recvSubarrayY1);
+        // Subarray for back side
+        subSize(1) = 1;
+        saStarts(1) = globSize(1) - 2;
+        MPI_Type_create_subarray(3, globSize.data(), subSize.data(), saStarts.data(), MPI_ORDER_C, MPI_DOUBLE_PRECISION, &sendSubarrayY1);
+        MPI_Type_commit(&sendSubarrayY1);
+
+        saStarts(1) = globSize(1) - 1;
+        MPI_Type_create_subarray(3, globSize.data(), subSize.data(), saStarts.data(), MPI_ORDER_C, MPI_DOUBLE_PRECISION, &recvSubarrayY1);
+        MPI_Type_commit(&recvSubarrayY1);
+    }
 
 }
 
@@ -139,13 +141,16 @@ void mpidata::syncData() {
 
     MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayX0, shareRanks(0), 1, MPI_COMM_WORLD, &recvRequest(0));
     MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayX1, shareRanks(1), 1, MPI_COMM_WORLD, &recvRequest(1));
-    MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayY0, shareRanks(2), 1, MPI_COMM_WORLD, &recvRequest(2));
-    MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayY1, shareRanks(3), 1, MPI_COMM_WORLD, &recvRequest(3));
-
     MPI_Send(dataField.dataFirst(), 1, sendSubarrayX0, shareRanks(0), 1, MPI_COMM_WORLD);
     MPI_Send(dataField.dataFirst(), 1, sendSubarrayX1, shareRanks(1), 1, MPI_COMM_WORLD);
-    MPI_Send(dataField.dataFirst(), 1, sendSubarrayY0, shareRanks(2), 1, MPI_COMM_WORLD);
-    MPI_Send(dataField.dataFirst(), 1, sendSubarrayY1, shareRanks(3), 1, MPI_COMM_WORLD);
+
+    if (!gridData.isPlanar){
+        MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayY0, shareRanks(2), 1, MPI_COMM_WORLD, &recvRequest(2));
+        MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayY1, shareRanks(3), 1, MPI_COMM_WORLD, &recvRequest(3));
+        MPI_Send(dataField.dataFirst(), 1, sendSubarrayY0, shareRanks(2), 1, MPI_COMM_WORLD);
+        MPI_Send(dataField.dataFirst(), 1, sendSubarrayY1, shareRanks(3), 1, MPI_COMM_WORLD);
+    }
+
 
     MPI_Waitall(4, recvRequest.dataFirst(), recvStatus.dataFirst());
 }

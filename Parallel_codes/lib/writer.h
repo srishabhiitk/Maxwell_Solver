@@ -41,9 +41,10 @@ class writer {
         std::string datasetName;
 
     public:
-        writer(const char *fileName, const grid &mesh, field *iField);
+        writer(const char *fileName, bool read, const grid &mesh, field *iField);
 
         void writeHDF5(double t);
+        void readHDF5(std::string datasetName);
         void closeWriter();
 };
 

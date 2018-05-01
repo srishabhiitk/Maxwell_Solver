@@ -40,9 +40,9 @@ int main()
     blitz::TinyVector<int, 3> tiny2;
     int gg;
     std::cout<<"Grabage value of gg:"<<gg<<std::endl;
-    std::cout<<"Grabage value of a[0][0]:"<<a(0,0)<<std::endl;
+    // std::cout<<"Grabage value of a[0][0]:"<<a(0,0)<<std::endl;
     a.resize(3,3);
-    std::cout<<"Grabage value of a[0][0]:"<<a(0,0)<<std::endl;
+    // std::cout<<"Grabage value of a[0][0]:"<<a(0,0)<<std::endl;
     b.resize(3,3);
     c.resize(0,0);
     // c(3,3);
@@ -117,6 +117,14 @@ int main()
     lb=-1,3;
     ub=0,0;
     bool chk=lb(0)<0;
+    blitz::Array<int,1> c1;
+    c1.resize(15);
+    int size=c1.size();
+    if (size>=15){
+        std::cout<<"comparison successful!"<<std::endl;
+    }
+
+    std::cout<<"c1 shape:"<<c1.size()<<std::endl;
 
     std::cout<<chk<<std::endl;
 

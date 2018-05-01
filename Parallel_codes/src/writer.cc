@@ -11,13 +11,19 @@
  * \param   iField is a const reference to the scalar field whose data is to be written
  ********************************************************************************************************************************************
  */
-writer::writer(const char *fileName, const grid &mesh, field *iField): mesh(mesh), outField(iField) {
+writer::writer(const char *fileName, bool read, const grid &mesh, field *iField): mesh(mesh), outField(iField) {
     // Create a property list for collectively opening a file by all processors
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
     H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
-    // First create a file handle with the path to the output file
-    fileHandle = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
+    // First create a file handle with the path to the file
+    if (read){
+        fileHandle = H5Fopen(fileName, H5F_ACC_RDONLY, plist_id);
+    }
+    else{
+        fileHandle = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
+    }
+
 
     // Close the property list for later reuse
     H5Pclose(plist_id);
@@ -139,6 +145,34 @@ void writer::writeHDF5(double t) {
     // The destination is the targetDSpace. Though the targetDSpace is smaller than the sourceDSpace,
     // only the appropriate hyperslab within the sourceDSpace is transferred to the destination.
     status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, sourceDSpace, targetDSpace, plist_id, outField->F.dataFirst());
+    if (status) {
+        if (mesh.rankData.rank == 0) {
+            std::cout << "Error in writing output to HDF file. Aborting" << std::endl;
+        }
+        exit(0);
+    }
+
+    temp.str("");
+    H5Pclose(plist_id);
+    H5Dclose(dataSet);
+}
+
+
+void writer::readHDF5(std::string datasetName) {
+
+    // Create the dataset *for the file*, linking it to the file handle.
+    // Correspondingly, it will use the *core* dataspace, as only the core has to be written excluding the pads
+    dataSet = H5Dopen(fileHandle, datasetName.c_str(), H5P_DEFAULT);
+
+    // Create a property list to use collective data write
+    plist_id = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+    // Write the dataset. Most important thing to note is that the 3rd and 4th arguments represent the *source* and *destination* dataspaces.
+    // The source here is the sourceDSpace pointing to the memory buffer. Note that its view has been adjusted using hyperslab.
+    // The destination is the targetDSpace. Though the targetDSpace is smaller than the sourceDSpace,
+    // only the appropriate hyperslab within the sourceDSpace is transferred to the destination.
+    status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, sourceDSpace, targetDSpace, plist_id, (void*)outField->F.data());
     if (status) {
         if (mesh.rankData.rank == 0) {
             std::cout << "Error in writing output to HDF file. Aborting" << std::endl;

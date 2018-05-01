@@ -15,12 +15,20 @@ grid::grid(const reader &solParam, parallel &parallelData): inputData(solParam),
 
     colloq_start_index_x = xRank*(Nx-2)/npX;
     colloq_start_index_y = yRank*(Ny-2)/npY;
+    colloq_start_index_z = 0;
     colloq_end_index_x = colloq_start_index_x+(Nx-2)/npX+1;
     colloq_end_index_y = colloq_start_index_y+(Ny-2)/npY+1;
+    colloq_end_index_z = inputData.Nz - 1;
 
     local_colloq_x = (Nx-2)/npX+2;
     local_colloq_y = (Ny-2)/npY+2;
     local_colloq_z = inputData.Nz;
 
+    isPlanar = inputData.isPlanar;
+    if (isPlanar){
+        local_colloq_y = 1;
+        colloq_start_index_y = 0;
+        colloq_end_index_y = 0;
+    }
 
 }

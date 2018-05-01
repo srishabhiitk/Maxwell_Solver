@@ -22,6 +22,9 @@ void reader::readYAML() {
     YAML::Parser parser(inFile);
 
     parser.GetNextDocument(yamlNode);
+    yamlNode["isPlanar"] >> isPlanar;
+
+    parser.GetNextDocument(yamlNode);
     yamlNode["X Length"] >> Nx;
     yamlNode["Y Length"] >> Ny;
     yamlNode["Z Length"] >> Nz;
@@ -30,6 +33,7 @@ void reader::readYAML() {
     yamlNode["Z Resolution"] >> dz;
     yamlNode["Courant factor"] >> S;
     yamlNode["Number of timesteps"] >> num_timesteps;
+    yamlNode["Use Plane Wave"] >> usePW;
 
     parser.GetNextDocument(yamlNode);
     yamlNode["X Number of Procs"] >> npX;
@@ -59,5 +63,14 @@ void reader::readYAML() {
          exit(0);
      }
 
+     if (isPlanar==true && Ny!=1){
+         std::cout << "ERROR: Please put number of grid points in Y-direction as 1 for planar solutions.";
+         exit(0);
+     }
+
+     if (isPlanar==true && npY!=1){
+         std::cout << "ERROR: Please put number of processors in Y-direction as 1 for planar solutions.";
+         exit(0);
+     }
 
  }

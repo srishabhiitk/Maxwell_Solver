@@ -19,9 +19,13 @@ class grid {
 
         int colloq_start_index_x;
         int colloq_start_index_y;
+        int colloq_start_index_z;
 
         int colloq_end_index_x;
         int colloq_end_index_y;
+        int colloq_end_index_z;
+
+        bool isPlanar;
 
 
 

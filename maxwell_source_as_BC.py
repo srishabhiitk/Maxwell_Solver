@@ -64,12 +64,18 @@ for timesteps in range(num_timesteps):
 
 	if(np.mod(timesteps,5)==0):
 		# Ez[int(n/2)-50:int(n/2)+50,int(n/2)-50:int(n/2)+50]=1
-		frame=plt.imshow(Ez**2,animated=True,cmap='gray')
+		gg=Ez**2
+		gg[500-50,500-50:500+50+1]=0.5
+		gg[500+50,500-50:500+50+1]=0.5
+		gg[500-50:500+50+1,500-50]=0.5
+		gg[500-50:500+50+1,500+50]=0.5
+		frame=plt.imshow(gg,animated=True,cmap='coolwarm')
 		plt.clim([0,1])
+		plt.axis('off')
 		imz.append([frame])
-	if (timesteps==1000 or timesteps==1745 or timesteps==2245):
-		filegg='out_'+str(timesteps)
-		np.save(filegg,Ez**2)
+	# if (timesteps==1000 or timesteps==1745 or timesteps==2245):
+	# 	filegg='out_'+str(timesteps)
+	# 	np.save(filegg,Ez**2)
 		# plt.imshow(Ez**2,cmap='GnBu')
 		# plt.savefig(filegg)
 

@@ -20,6 +20,28 @@ reader.h
 parallel.h
 /home/rishabh/Maxwell_Solver/Parallel_codes/lib/parallel.h
 
+/home/rishabh/Maxwell_Solver/Parallel_codes/lib/maxwell.h
+iostream
+-
+math.h
+-
+blitz/array.h
+-
+parallel.h
+/home/rishabh/Maxwell_Solver/Parallel_codes/lib/parallel.h
+reader.h
+/home/rishabh/Maxwell_Solver/Parallel_codes/lib/reader.h
+grid.h
+/home/rishabh/Maxwell_Solver/Parallel_codes/lib/grid.h
+vfield.h
+/home/rishabh/Maxwell_Solver/Parallel_codes/lib/vfield.h
+writer.h
+/home/rishabh/Maxwell_Solver/Parallel_codes/lib/writer.h
+sstream
+-
+sys/time.h
+-
+
 /home/rishabh/Maxwell_Solver/Parallel_codes/lib/mpidata.h
 blitz/array.h
 -
@@ -80,6 +102,10 @@ field.h
 grid.h
 /home/rishabh/Maxwell_Solver/Parallel_codes/src/grid.h
 
+/home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.cc
+maxwell.h
+/home/rishabh/Maxwell_Solver/Parallel_codes/src/maxwell.h
+
 /home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.cc
 mpidata.h
 /home/rishabh/Maxwell_Solver/Parallel_codes/src/mpidata.h
@@ -116,6 +142,8 @@ writer.h
 sstream
 -
 sys/time.h
+-
+maxwell.h
 -
 
 /home/rishabh/Maxwell_Solver/Parallel_codes/src/vfield.cc

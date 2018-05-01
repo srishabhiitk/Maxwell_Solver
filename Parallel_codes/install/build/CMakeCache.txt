@@ -114,7 +114,7 @@ CMAKE_OBJCOPY:FILEPATH=/usr/bin/objcopy
 CMAKE_OBJDUMP:FILEPATH=/usr/bin/objdump
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=maxwell
+CMAKE_PROJECT_NAME:STATIC=EMsolver
 
 //Path to a program.
 CMAKE_RANLIB:FILEPATH=/usr/bin/ranlib
@@ -165,17 +165,17 @@ CMAKE_STRIP:FILEPATH=/usr/bin/strip
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
+//Value Computed by CMake
+EMsolver_BINARY_DIR:STATIC=/home/rishabh/Maxwell_Solver/Parallel_codes/install/build
+
+//Value Computed by CMake
+EMsolver_SOURCE_DIR:STATIC=/home/rishabh/Maxwell_Solver/Parallel_codes/install
+
 //C++ compiler flags for OpenMP parallization
 OpenMP_CXX_FLAGS:STRING=-fopenmp
 
 //C compiler flags for OpenMP parallization
 OpenMP_C_FLAGS:STRING=-fopenmp
-
-//Value Computed by CMake
-maxwell_BINARY_DIR:STATIC=/home/rishabh/Maxwell_Solver/Parallel_codes/install/build
-
-//Value Computed by CMake
-maxwell_SOURCE_DIR:STATIC=/home/rishabh/Maxwell_Solver/Parallel_codes/install
 
 
 ########################
