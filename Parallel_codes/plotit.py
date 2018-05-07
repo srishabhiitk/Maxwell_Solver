@@ -47,20 +47,20 @@ for i in range(len(f.keys())):
     data=np.array(f[f.keys()[i]]) #scattered wave
     # data2=np.array(f_p[f_p.keys()[i]]) #plane wave
     # data[:,:,:]=0
-    m=np.amax(data)
+    # m=np.amax(data)
     # m=0.5;
-    data[0,0,:]=m;
-    data[0,-1,:]=m;
-    data[-1,0,:]=m;
-    data[-1,-1,:]=m;
-    data[0,:,0]=m;
-    data[0,:,-1]=m;
-    data[-1,:,0]=m;
-    data[-1,:,-1]=m;
-    data[:,0,0]=m;
-    data[:,0,-1]=m;
-    data[:,-1,0]=m;
-    data[:,-1,-1]=m;
+    # data[0,0,:]=m;
+    # data[0,-1,:]=m;
+    # data[-1,0,:]=m;
+    # data[-1,-1,:]=m;
+    # data[0,:,0]=m;
+    # data[0,:,-1]=m;
+    # data[-1,:,0]=m;
+    # data[-1,:,-1]=m;
+    # data[:,0,0]=m;
+    # data[:,0,-1]=m;
+    # data[:,-1,0]=m;
+    # data[:,-1,-1]=m;
     # m1=0.1;
     # data2[45:56,45,45]=m1;
     # data2[45,45:56,45]=m1;
@@ -92,7 +92,7 @@ for i in range(len(f.keys())):
 
     mlab.view(azimuth=(-150+(i*5)), elevation=60, distance=500, focalpoint=(49,49,49))
     # mlab.move(right=30)
-    mlab.savefig(filename='./anim/fig%03d.png'%i)
+    # mlab.savefig(filename='./anim/fig%03d.png'%i)
     # mlab.show()
     mlab.close()
 

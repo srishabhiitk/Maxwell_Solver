@@ -1,5 +1,11 @@
-Results
-aether
+Results/
+aether/
 *.eps
 *.npy
-
+*.h5
+*.o
+*.out
+*.png
+Parallel_codes/anim/
+*scorep*
+*.log

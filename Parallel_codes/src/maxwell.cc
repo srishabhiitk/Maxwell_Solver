@@ -7,36 +7,62 @@ maxwell::maxwell(reader &_inputData, parallel &_mpi, grid &_gridData): inputData
     num_timesteps = inputData.num_timesteps;
     epsilon0 = 8.85*pow(10,-12);
     mew0 = M_PI*4*pow(10,-7);
-    S = 1/pow(2,0.5);//inputData.S;
+    S = 1/pow(3,0.5);//inputData.S;
     c = 1/pow(epsilon0*mew0,0.5);
     dt=S*inputData.dx/c;
     dx=inputData.dx;
     dy=inputData.dy;
     dz=inputData.dz;
-    sigma=pow(10,-3);
-    init=100;
+    sigma=pow(10,-4);
+    init=60;
     lambda=10*dx;
-    if (inputData.usePW){
-        double theta = M_PI/2.0;
-        H_x_dir = sin(theta);
-        H_z_dir = -cos(theta);
-        E_y_dir = 1;
-        kx = cos(theta);
-        kz = sin(theta);
-        ky = 0;
-        p1 = 50;
-        r1 = 50;
-        p2 = 950;
-        r2 = 950;
+    usePW = inputData.usePW;
+    if (usePW){
+        // double theta = M_PI/2.0;
+        // H_x_dir = sin(theta);
+        // H_z_dir = -cos(theta);
+        // E_y_dir = 1;
+        // kx = cos(theta);
+        // kz = sin(theta);
+        // ky = 0;
+
+        H_x_dir = -1.0/sqrt(6);
+        H_y_dir = 2.0/sqrt(6);
+        H_z_dir = -1.0/sqrt(6);
+        E_x_dir = 1.0/sqrt(2);
+        E_y_dir = 0;
+        E_z_dir = -1.0/sqrt(2);
+        kx = 1.0/sqrt(3);
+        kz = 1.0/sqrt(3);
+        ky = 1.0/sqrt(3);
+
+        // H_x_dir = 0.0;
+        // H_y_dir = 0.0;
+        // H_z_dir = -1.0;
+        // E_x_dir = 1.0;
+        // E_y_dir = 0.0;
+        // E_z_dir = 0.0;
+        // kx = 0.0;
+        // ky = 1.0;
+        // kz = 0.0;
+
+        p1 = 20;
+        q1 = 20;
+        r1 = 20;
+        p2 = 80;
+        q2 = 80;
+        r2 = 80;
         // pw_start_cord = 300,0,300;
         // pw_end_cord = 500,0,500;
         plane_wave_initialise();
     }
 }
 
+
+
 void maxwell::solve(){
     if (gridData.isPlanar){
-        solve_planar_pml();
+        solve_planar();
     }
     else{
         solve3d_pml();
@@ -45,13 +71,12 @@ void maxwell::solve(){
 
 
 
-
 void maxwell::solve3d(){
     double Ca = 1.0, Da = 1.0;
     double Cb = dt/epsilon0;
     double Db = dt/mew0;
-    double sigma=pow(10,0);
-    double init=20.0;
+    // double sigma=pow(10,0);
+    // double init=20.0;
     int t = 0; //timestep
     //int i,j,k; //loop vars
     int Nx = gridData.local_colloq_x;
@@ -73,7 +98,7 @@ void maxwell::solve3d(){
     blitz::TinyVector<int,3> source;
     source = int(inputData.Nx/2), int(inputData.Ny/2), int(inputData.Nz/2);
 
-    //writer Ez_writer("Ez_data.h5", false, gridData, E->Vz);
+    writer Ez_writer("Ez_data2.h5", false, gridData, Etotal->Vz);
     // Ez_writer.closeWriter();
 
     gettimeofday(&begin,NULL);
@@ -86,15 +111,18 @@ void maxwell::solve3d(){
         // }
 
 
-        // MPI_Reduce(&local_max, &max, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&local_max, &max, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-        // if (mpi.rank==0){
-        //     std::cout<<"t: "<<t<<", max: "<<max<<std::endl;
-        //     // std::cout<<std::endl;
-        // }
+        if (mpi.rank==0){
+            std::cout<<"t: "<<t<<", max: "<<max<<std::endl;
+            // std::cout<<std::endl;
+        }
 
 
         E->curl_3d(Ecurl);
+        if (usePW){
+            plane_wave_execute(Ecurl,t);
+        }
 
         #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
         for (int i=0;i<Nx;i++){
@@ -124,6 +152,9 @@ void maxwell::solve3d(){
         }
 
         H->curl_3d(Hcurl);
+        if (usePW){
+            plane_wave_execute(Hcurl,t);
+        }
 
         #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
         for (int i=0;i<(Nx-1);i++){
@@ -155,6 +186,16 @@ void maxwell::solve3d(){
 
 
 
+        E->Vz->mpiHandle->syncData();
+        E->Vy->mpiHandle->syncData();
+        E->Vx->mpiHandle->syncData();
+
+
+
+        //Has to be placed after syncing because sometimes in plane-wave simulation
+        //curl gets updated by plane-wave where it is not updated (is at boundary)
+        //it does not affect anything because things get reset after syncing but
+        //curl specifically at that point keeps on getting edited! (NOT RESOLVED YET!)
         #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
         for (int i=0;i<(Nx-1);i++){
           for (int j=0;j<(Ny-1);j++){
@@ -164,39 +205,36 @@ void maxwell::solve3d(){
           }
         }
 
-        E->Vz->mpiHandle->syncData();
-        E->Vy->mpiHandle->syncData();
-        E->Vx->mpiHandle->syncData();
 
-
-        if (check_global_limits(source, false, false)){
-            E->Vz->F(global_to_local(source))=exp(-pow(-init+t,2)/sigma);
-        }
+        // if (check_global_limits(source, false, false)){
+        //     E->Vz->F(global_to_local(source))=exp(-pow(-init+t,2)/sigma);
+        // }
 
         local_max = blitz::max(Etotal->Vz->F);
+        // std::cout<<"rank: "<<mpi.rank<<", max:"<<local_max<<std::endl;
 
-        /*
-        if (t>=20&&t<=200&&(t%10==0)){
+
+        if (t%10==0){
             Ez_writer.writeHDF5(t);
         }
-        */
-        if (mpi.rank==0){
-            std::cout<<"t="<<t<<std::endl;
-        }
+
+        // if (mpi.rank==0){
+        //     std::cout<<"t="<<t<<std::endl;
+        // }
 
 
     }
     gettimeofday(&end,NULL);
     std::cout<<"Time taken: "<<((end.tv_sec-begin.tv_sec)*1000000u + end.tv_usec - begin.tv_usec)/1.0e6<<" sec"<<std::endl;
-    //Ez_writer.closeWriter();
+    Ez_writer.closeWriter();
 }
 
 
 
 void maxwell::solve3d_pml(){
     double Ca = 1.0, Da = 1.0;
-    double sigma=pow(10,0);
-    double init=20.0;
+    // double sigma=pow(10,0);
+    // double init=20.0;
     int t = 0;
     int Nx = gridData.local_colloq_x;
     int Ny = gridData.local_colloq_y;
@@ -251,7 +289,7 @@ void maxwell::solve3d_pml(){
     c_fn(1,false,c_hy,d_pml,ma_pml,m_pml,k_max,sigma_max,a_max);
     c_fn(2,false,c_hz,d_pml,ma_pml,m_pml,k_max,sigma_max,a_max);
 
-    std::cout<<"rank:"<<mpi.rank<<std::endl<<c_ez<<std::endl;
+    // std::cout<<"rank:"<<mpi.rank<<std::endl<<c_ez<<std::endl;
 
 
     vfield *E = new vfield(gridData,false);
@@ -279,6 +317,21 @@ void maxwell::solve3d_pml(){
     Db->Vz->F=dt/mew0;
 
 
+    // //Solid block at center
+    // blitz::TinyVector<int,3> loBound;
+    // loBound=45,45,45;
+    // loBound = global_to_local(loBound);
+    // blitz::TinyVector<int,3> upBound;
+    // upBound=55,55,55;
+    // upBound = global_to_local(upBound);
+    // blitz::RectDomain<3> rd;
+    // rd=blitz::RectDomain<3>(loBound,upBound);
+    // Cb->Vx->F(rd) = dt/(epsilon0*6);
+    // Cb->Vy->F(rd) = dt/(epsilon0*6);
+    // Cb->Vz->F(rd) = dt/(epsilon0*6);
+
+
+
 
     blitz::TinyVector<int,3> source;
     source = int(inputData.Nx/2), int(inputData.Ny/2), int(inputData.Nz/2);
@@ -287,13 +340,14 @@ void maxwell::solve3d_pml(){
     writer Ez_writer("Ez_data.h5", false, gridData, Etotal->Vz);
 
 
+
     for (t=0; t<num_timesteps; t++){
-        if (t==0){
-            if (check_global_limits(source, false, true)){
-                // E->Vz->F(global_to_local(source))=exp(-pow(-init+t,2)/sigma);
-                E->Vz->F(global_to_local(source))=sin(t/10.0*M_PI);
-            }
-        }
+        // if (t==0){
+        //     if (check_global_limits(source, false, true)){
+        //         // E->Vz->F(global_to_local(source))=exp(-pow(-init+t,2)/sigma);
+        //         E->Vz->F(global_to_local(source))=sin(t/10.0*M_PI);
+        //     }
+        // }
 
         MPI_Reduce(&local_max, &max, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
@@ -303,6 +357,9 @@ void maxwell::solve3d_pml(){
         }
 
         E->curl_3d_adv(Ecurl1,Ecurl2);
+        if (usePW){
+            plane_wave_execute(Ecurl1,Ecurl2,t);
+        }
 
         #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
         for (int i=0;i<Nx;i++){
@@ -341,6 +398,9 @@ void maxwell::solve3d_pml(){
 
 
         H->curl_3d_adv(Hcurl1,Hcurl2);
+        if (usePW){
+            plane_wave_execute(Hcurl1,Hcurl2,t);
+        }
 
         #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
         for (int i=0;i<(Nx-1);i++){
@@ -378,6 +438,12 @@ void maxwell::solve3d_pml(){
 
 
 
+        E->Vz->mpiHandle->syncData();
+        E->Vy->mpiHandle->syncData();
+        E->Vx->mpiHandle->syncData();
+
+
+
         #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
         for (int i=0;i<(Nx-1);i++){
           for (int j=0;j<(Ny-1);j++){
@@ -390,17 +456,13 @@ void maxwell::solve3d_pml(){
 
 
 
-        E->Vz->mpiHandle->syncData();
-        E->Vy->mpiHandle->syncData();
-        E->Vx->mpiHandle->syncData();
-
         // std::cout<<E->Vy->F(blitz::Range(49,54),0,blitz::Range(49,54))<<std::endl;
 
 
-        if (check_global_limits(source, false, true)){
-          // E->Vy->F(global_to_local(source))=exp(-pow(-init+t,2)/sigma);
-          E->Vz->F(global_to_local(source))=sin(t/10.0*M_PI);
-        }
+        // if (check_global_limits(source, false, true)){
+        //   // E->Vy->F(global_to_local(source))=exp(-pow(-init+t,2)/sigma);
+        //   E->Vz->F(global_to_local(source))=sin(t/10.0*M_PI);
+        // }
 
         local_max = blitz::max(Etotal->Vz->F);
 
@@ -417,7 +479,6 @@ void maxwell::solve3d_pml(){
 
 
 
-
 void maxwell::solve_planar(){
     double Ca = 1.0, Da = 1.0;
     // double Cb = dt/epsilon0;
@@ -429,7 +490,7 @@ void maxwell::solve_planar(){
     int Nx = gridData.local_colloq_x;
     int Nz = gridData.local_colloq_z;
     double local_max, max = 0;
-    bool usePW = inputData.usePW;
+
 
     struct timeval begin,end;
 
@@ -452,8 +513,8 @@ void maxwell::solve_planar(){
 
     Cb_reader.readHDF5("data");
 
-    Cb->Vy->F=(Cb->Vy->F*1.5+1)*epsilon0;
-    Cb->Vy->F=dt/Cb->Vy->F;
+    // Cb->Vy->F=(Cb->Vy->F*1.5+1)*epsilon0;
+    Cb->Vy->F=dt/epsilon0;
 
     // std::cout<<"Db:"<<Db<<std::endl;
     // Ez_writer.closeWriter();
@@ -536,7 +597,6 @@ void maxwell::solve_planar(){
 
 
 
-
 void maxwell::solve_planar_pml(){
     double Ca = 1.0, Da = 1.0;
     double sigma=pow(10,0);
@@ -549,21 +609,21 @@ void maxwell::solve_planar_pml(){
 
 
     // For PML BC
-    double a_max=0.0;
-    double k_max=15;
-    double m_pml=3;
-    double ma_pml=1;
-    double sigma_optimal=0.8*(m_pml+1)/dx/pow(mew0/epsilon0,0.5);
-    double sigma_max=sigma_optimal*0.65;
-    double d_pml=10*dx;
-
-    // double a_max=0;
-    // double k_max=1;
+    // double a_max=0.0;
+    // double k_max=15;
     // double m_pml=3;
     // double ma_pml=1;
     // double sigma_optimal=0.8*(m_pml+1)/dx/pow(mew0/epsilon0,0.5);
-    // double sigma_max=sigma_optimal*0;
+    // double sigma_max=sigma_optimal*0.65;
     // double d_pml=10*dx;
+
+    double a_max=0;
+    double k_max=1;
+    double m_pml=3;
+    double ma_pml=1;
+    double sigma_optimal=0.8*(m_pml+1)/dx/pow(mew0/epsilon0,0.5);
+    double sigma_max=sigma_optimal*0;
+    double d_pml=10*dx;
 
 
 
@@ -611,12 +671,13 @@ void maxwell::solve_planar_pml(){
 
 
 
-    writer Cb_reader("wg2.h5", true, gridData, Cb->Vy);
+    // writer Cb_reader("wg2.h5", true, gridData, Cb->Vy);
+    //
+    // Cb_reader.readHDF5("data");
 
-    Cb_reader.readHDF5("data");
-
-    Cb->Vy->F=(Cb->Vy->F*11 + 1)*epsilon0;
-    Cb->Vy->F=dt/Cb->Vy->F;
+    // Cb->Vy->F=(Cb->Vy->F*11 + 1)*epsilon0;
+    // Cb->Vy->F=dt/Cb->Vy->F;
+    Cb->Vy->F=dt/epsilon0;
     Db->Vx->F=dt/mew0;
     Db->Vz->F=dt/mew0;
 
@@ -627,13 +688,17 @@ void maxwell::solve_planar_pml(){
     writer Ey_writer("Ey_data_2d.h5", false, gridData, E->Vy);
 
 
+    // std::cout<<"Db:"<<Db->Vx->F(0,0,0)<<std::endl;
+    // std::cout<<"Cb:"<<Cb->Vy->F(0,0,0)<<std::endl;
+
+
     for (t=0; t<num_timesteps; t++){
-        if (t==0){
-            if (check_global_limits(source, false, true)){
-                // E->Vy->F(global_to_local(source))=1;//exp(-pow(-init+t,2)/sigma);
-                E->Vy->F(global_to_local(source))=sin(t/30.0*M_PI);
-            }
-        }
+        // if (t==0){
+        //     if (check_global_limits(source, false, true)){
+        //         // E->Vy->F(global_to_local(source))=1;//exp(-pow(-init+t,2)/sigma);
+        //         E->Vy->F(global_to_local(source))=sin(t/30.0*M_PI);
+        //     }
+        // }
 
         MPI_Reduce(&local_max, &max, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
@@ -643,6 +708,9 @@ void maxwell::solve_planar_pml(){
         }
 
         E->curl_planar_adv(Ecurl1, Ecurl2);
+        if (usePW){
+            plane_wave_execute(Ecurl1, Ecurl2, t);
+        }
         #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
         for (int i=0;i<Nx;i++){
             for (int j=0;j<(Nz-1);j++){
@@ -659,6 +727,9 @@ void maxwell::solve_planar_pml(){
         }
 
         H->curl_planar_adv(Hcurl1, Hcurl2);
+        if (usePW){
+            plane_wave_execute(Hcurl1, Hcurl2, t);
+        }
         #pragma omp parallel for num_threads(n_threads) schedule(dynamic)
         for (int i=0;i<(Nx-1);i++){
             for (int j=0;j<(Nz-1);j++){
@@ -676,10 +747,10 @@ void maxwell::solve_planar_pml(){
         // std::cout<<E->Vy->F(blitz::Range(49,54),0,blitz::Range(49,54))<<std::endl;
 
 
-        if (check_global_limits(source, false, true)){
-          // E->Vy->F(global_to_local(source))=1;//exp(-pow(-init+t,2)/sigma);
-          E->Vy->F(global_to_local(source))=sin(t/30.0*M_PI);
-        }
+        // if (check_global_limits(source, false, true)){
+        //   // E->Vy->F(global_to_local(source))=1;//exp(-pow(-init+t,2)/sigma);
+        //   E->Vy->F(global_to_local(source))=sin(t/30.0*M_PI);
+        // }
 
         local_max = blitz::max(E->Vy->F*E->Vy->F);
 
@@ -691,248 +762,727 @@ void maxwell::solve_planar_pml(){
     }//end of for loop
 
     Ey_writer.closeWriter();
-    Cb_reader.closeWriter();
+    // Cb_reader.closeWriter();
 }
 
 
 
 void maxwell::plane_wave_execute(vfield *curl, int timestep){
-    double temp = exp(-pow((-timestep*c*dt),2)/sigma);
-    // exp(-pow(((i*dx*kx + r1*dz*kz) + init*dx),2)/sigma)*E_y_dir;
+    blitz::TinyVector<int,3> temp;
+
+
     if (gridData.isPlanar){
+
         if (curl->isFaceCentered){
-            for (int i=0; i<(signed)H_x_pw_coeff.size(); i++){
-                curl->Vx->F(H_x_pw_index(i)) = curl->Vx->F(H_x_pw_index(i)) - H_x_pw_sign(i)*exp(-pow((H_x_pw_coeff(i)-(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dz;//*sin(2*M_PI/lambda*(H_x_pw_coeff(i)-(timestep-0.5)*c*dt));
+            // Changes on YZ plane
+            if ((p1-1)>=gridData.colloq_start_index_x && (p1-1)<=gridData.colloq_end_index_x && start_z!=-1){
+                for (int k=start_z; k<=end_z; k++){
+                    temp = (p1-1),0,k;
+                    temp = global_to_local(temp);
+                    curl->Vz->F(temp) = curl->Vz->F(temp) + exp(-pow(((p1*dx*kx + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dx;
+                }
             }
-            for (int i=0; i<(signed)H_z_pw_coeff.size(); i++){
-                curl->Vz->F(H_z_pw_index(i)) = curl->Vz->F(H_z_pw_index(i)) - H_z_pw_sign(i)*exp(-pow((H_z_pw_coeff(i)-(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dx;//*sin(2*M_PI/lambda*(H_z_pw_coeff(i)-(timestep-0.5)*c*dt));
+            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x && start_z!=-1){
+                for (int k=start_z; k<=end_z; k++){
+                    temp = p2,0,k;
+                    temp = global_to_local(temp);
+                    curl->Vz->F(temp) = curl->Vz->F(temp) - exp(-pow(((p2*dx*kx + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dx;
+                }
+            }
+
+
+
+            // Changes on XY plane
+            if ((r1-1)>=gridData.colloq_start_index_z && (r1-1)<=gridData.colloq_end_index_z && start_x!=-1){
+                for (int i=start_x; i<=end_x; i++){
+                    temp = i,0,(r1-1);
+                    temp = global_to_local(temp);
+                    curl->Vx->F(temp) = curl->Vx->F(temp) - exp(-pow(((i*dx*kx + r1*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dz;
+                }
+            }
+            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1){
+                for (int i=start_x; i<=end_x; i++){
+                    temp = i,0,r2;
+                    temp = global_to_local(temp);
+                    curl->Vx->F(temp) = curl->Vx->F(temp) + exp(-pow(((i*dx*kx + r2*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dz;
+                }
             }
         }
         else{
-            for (int i=0; i<(signed)E_y_pw_coeff1.size(); i++){
-                curl->Vy->F(E_y_pw_index1(i)) = curl->Vy->F(E_y_pw_index1(i)) + E_y_pw_sign1(i)*exp(-pow((E_y_pw_coeff1(i)-timestep*c*dt),2)/sigma)*H_x_dir/dz/c/mew0;//*sin(2*M_PI/lambda*(E_y_pw_coeff1(i)-timestep*c*dt));
+            // *************  if curl is not face-centered  *****************
+
+            // Changes on YZ plane
+            if (p1>=gridData.colloq_start_index_x && p1<=gridData.colloq_end_index_x && start_z!=-1){
+                for (int k=start_z; k<=end_z; k++){
+                    temp = p1,0,k;
+                    temp = global_to_local(temp);
+                    curl->Vy->F(temp) = curl->Vy->F(temp) + exp(-pow((((p1-0.5)*dx*kx + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dx/c/mew0;
+                }
             }
-            for (int i=0; i<(signed)E_y_pw_coeff2.size(); i++){
-                curl->Vy->F(E_y_pw_index2(i)) = curl->Vy->F(E_y_pw_index2(i)) + E_y_pw_sign2(i)*exp(-pow((E_y_pw_coeff2(i)-timestep*c*dt),2)/sigma)*H_z_dir/dx/c/mew0;//*sin(2*M_PI/lambda*(E_y_pw_coeff2(i)-timestep*c*dt));
+            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x && start_z!=-1){
+                for (int k=start_z; k<=end_z; k++){
+                    temp = p2,0,k;
+                    temp = global_to_local(temp);
+                    curl->Vy->F(temp) = curl->Vy->F(temp) - exp(-pow((((p2+0.5)*dx*kx + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dx/c/mew0;
+                }
+            }
+
+
+
+            // Changes on XY plane
+            if (r1>=gridData.colloq_start_index_z && r1<=gridData.colloq_end_index_z && start_x!=-1){
+                for (int i=start_x; i<=end_x; i++){
+                    temp = i,0,r1;
+                    temp = global_to_local(temp);
+                    curl->Vy->F(temp) = curl->Vy->F(temp) - exp(-pow(((i*dx*kx + (r1-0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dz/c/mew0;
+                }
+            }
+            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1){
+                for (int i=start_x; i<=end_x; i++){
+                    temp = i,0,r2;
+                    temp = global_to_local(temp);
+                    curl->Vy->F(temp) = curl->Vy->F(temp) + exp(-pow(((i*dx*kx + (r2+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dz/c/mew0;
+                }
             }
         }
 
+
+
     }
+
+
+    else{
+        // **********************************************************************
+        // ************************  For 3-D plane wave  ************************
+        // **********************************************************************
+        if (curl->isFaceCentered){
+            // Changes on YZ plane
+            if ((p1-1)>=gridData.colloq_start_index_x && (p1-1)<=gridData.colloq_end_index_x && start_y!=-1 && start_z!=-1){
+                for (int j=start_y; j<=end_y-1; j++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = (p1-1),j,k;
+                        temp = global_to_local(temp);
+                        curl->Vz->F(temp) = curl->Vz->F(temp) - exp(-pow(((p1*dx*kx + (j+0.5)*dy*ky + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dx;
+                    }
+                }
+                for (int j=start_y; j<=end_y; j++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = (p1-1),j,k;
+                        temp = global_to_local(temp);
+                        curl->Vy->F(temp) = curl->Vy->F(temp) + exp(-pow(((p1*dx*kx + j*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_z_dir/dx;
+                    }
+                }
+            }
+            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x && start_y!=-1 && start_z!=-1){
+                for (int j=start_y; j<=end_y-1; j++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = p2,j,k;
+                        temp = global_to_local(temp);
+                        curl->Vz->F(temp) = curl->Vz->F(temp) + exp(-pow(((p2*dx*kx + (j+0.5)*dy*ky + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dx;
+                    }
+                }
+                for (int j=start_y; j<=end_y; j++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = p2,j,k;
+                        temp = global_to_local(temp);
+                        curl->Vy->F(temp) = curl->Vy->F(temp) - exp(-pow(((p2*dx*kx + j*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_z_dir/dx;
+                    }
+                }
+            }
+
+
+            // Changes on XZ plane
+            if ((q1-1)>=gridData.colloq_start_index_y && (q1-1)<=gridData.colloq_end_index_y && start_x!=-1 && start_z!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = i,(q1-1),k;
+                        temp = global_to_local(temp);
+                        curl->Vz->F(temp) = curl->Vz->F(temp) + exp(-pow((((i+0.5)*dx*kx + q1*dy*ky + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_x_dir/dy;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = i,(q1-1),k;
+                        temp = global_to_local(temp);
+                        curl->Vx->F(temp) = curl->Vx->F(temp) - exp(-pow(((i*dx*kx + q1*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_z_dir/dy;
+                    }
+                }
+            }
+            if (q2>=gridData.colloq_start_index_y && q2<=gridData.colloq_end_index_y && start_x!=-1 && start_z!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = i,q2,k;
+                        temp = global_to_local(temp);
+                        curl->Vz->F(temp) = curl->Vz->F(temp) - exp(-pow((((i+0.5)*dx*kx + q2*dy*ky + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_x_dir/dy;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = i,q2,k;
+                        temp = global_to_local(temp);
+                        curl->Vx->F(temp) = curl->Vx->F(temp) + exp(-pow(((i*dx*kx + q2*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_z_dir/dy;
+                    }
+                }
+            }
+
+
+
+            // Changes on XY plane
+            if ((r1-1)>=gridData.colloq_start_index_z && (r1-1)<=gridData.colloq_end_index_z && start_x!=-1 && start_y!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int j=start_y; j<=end_y; j++){
+                        temp = i,j,(r1-1);
+                        temp = global_to_local(temp);
+                        curl->Vy->F(temp) = curl->Vy->F(temp) - exp(-pow((((i+0.5)*dx*kx + j*dy*ky + r1*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_x_dir/dz;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int j=start_y; j<=end_y-1; j++){
+                        temp = i,j,(r1-1);
+                        temp = global_to_local(temp);
+                        curl->Vx->F(temp) = curl->Vx->F(temp) + exp(-pow(((i*dx*kx + (j+0.5)*dy*ky + r1*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dz;
+                    }
+                }
+            }
+            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1 && start_y!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int j=start_y; j<=end_y; j++){
+                        temp = i,j,r2;
+                        temp = global_to_local(temp);
+                        curl->Vy->F(temp) = curl->Vy->F(temp) + exp(-pow((((i+0.5)*dx*kx + j*dy*ky + r2*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_x_dir/dz;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int j=start_y; j<=end_y-1; j++){
+                        temp = i,j,r2;
+                        temp = global_to_local(temp);
+                        curl->Vx->F(temp) = curl->Vx->F(temp) - exp(-pow(((i*dx*kx + (j+0.5)*dy*ky + r2*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dz;
+                    }
+                }
+            }
+        }
+        else{
+            // *************  if curl is not face-centered  *****************
+
+            // Changes on YZ plane
+            if (p1>=gridData.colloq_start_index_x && p1<=gridData.colloq_end_index_x && start_y!=-1 && start_z!=-1){
+                for (int j=start_y; j<=end_y-1; j++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = p1,j,k;
+                        temp = global_to_local(temp);
+                        curl->Vy->F(temp) = curl->Vy->F(temp) + exp(-pow((((p1-0.5)*dx*kx + (j+0.5)*dy*ky + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dx/c/mew0;
+                    }
+                }
+                for (int j=start_y; j<=end_y; j++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = p1,j,k;
+                        temp = global_to_local(temp);
+                        curl->Vz->F(temp) = curl->Vz->F(temp) - exp(-pow((((p1-0.5)*dx*kx + j*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_y_dir/dx/c/mew0;
+                    }
+                }
+            }
+            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x && start_y!=-1 && start_z!=-1){
+                for (int j=start_y; j<=end_y-1; j++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = p2,j,k;
+                        temp = global_to_local(temp);
+                        curl->Vy->F(temp) = curl->Vy->F(temp) - exp(-pow((((p2+0.5)*dx*kx + (j+0.5)*dy*ky + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dx/c/mew0;
+                    }
+                }
+                for (int j=start_y; j<=end_y; j++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = p2,j,k;
+                        temp = global_to_local(temp);
+                        curl->Vz->F(temp) = curl->Vz->F(temp) + exp(-pow((((p2+0.5)*dx*kx + j*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_y_dir/dx/c/mew0;
+                    }
+                }
+            }
+
+
+            // Changes on XZ plane
+            if (q1>=gridData.colloq_start_index_y && q1<=gridData.colloq_end_index_y && start_x!=-1 && start_z!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = i,q1,k;
+                        temp = global_to_local(temp);
+                        curl->Vx->F(temp) = curl->Vx->F(temp) - exp(-pow((((i+0.5)*dx*kx + (q1-0.5)*dy*ky + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dy/c/mew0;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = i,q1,k;
+                        temp = global_to_local(temp);
+                        curl->Vz->F(temp) = curl->Vz->F(temp) + exp(-pow(((i*dx*kx + (q1-0.5)*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dy/c/mew0;
+                    }
+                }
+            }
+            if (q2>=gridData.colloq_start_index_y && q2<=gridData.colloq_end_index_y && start_x!=-1 && start_z!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = i,q2,k;
+                        temp = global_to_local(temp);
+                        curl->Vx->F(temp) = curl->Vx->F(temp) + exp(-pow((((i+0.5)*dx*kx + (q2+0.5)*dy*ky + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dy/c/mew0;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = i,q2,k;
+                        temp = global_to_local(temp);
+                        curl->Vz->F(temp) = curl->Vz->F(temp) - exp(-pow(((i*dx*kx + (q2+0.5)*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dy/c/mew0;
+                    }
+                }
+            }
+
+
+
+            // Changes on XY plane
+            if (r1>=gridData.colloq_start_index_z && r1<=gridData.colloq_end_index_z && start_x!=-1 && start_y!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int j=start_y; j<=end_y; j++){
+                        temp = i,j,r1;
+                        temp = global_to_local(temp);
+                        curl->Vx->F(temp) = curl->Vx->F(temp) + exp(-pow((((i+0.5)*dx*kx + j*dy*ky + (r1-0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_y_dir/dz/c/mew0;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int j=start_y; j<=end_y-1; j++){
+                        temp = i,j,r1;
+                        temp = global_to_local(temp);
+                        curl->Vy->F(temp) = curl->Vy->F(temp) - exp(-pow(((i*dx*kx + (j+0.5)*dy*ky + (r1-0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dz/c/mew0;
+                    }
+                }
+            }
+            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1 && start_y!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int j=start_y; j<=end_y; j++){
+                        temp = i,j,r2;
+                        temp = global_to_local(temp);
+                        curl->Vx->F(temp) = curl->Vx->F(temp) - exp(-pow((((i+0.5)*dx*kx + j*dy*ky + (r2+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_y_dir/dz/c/mew0;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int j=start_y; j<=end_y-1; j++){
+                        temp = i,j,r2;
+                        temp = global_to_local(temp);
+                        curl->Vy->F(temp) = curl->Vy->F(temp) + exp(-pow(((i*dx*kx + (j+0.5)*dy*ky + (r2+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dz/c/mew0;
+                    }
+                }
+            }
+        }
+    }  //End of else
 }
 
+
+
+void maxwell::plane_wave_execute(vfield *curl1, vfield *curl2, int timestep){
+    blitz::TinyVector<int,3> temp;
+
+
+    if (gridData.isPlanar){ //For 2-D plane wave
+        if (curl1->isFaceCentered){
+            // Changes on YZ plane
+            if ((p1-1)>=gridData.colloq_start_index_x && (p1-1)<=gridData.colloq_end_index_x && start_z!=-1){
+                for (int k=start_z; k<=end_z; k++){
+                    temp = (p1-1),0,k;
+                    temp = global_to_local(temp);
+                    curl1->Vz->F(temp) = curl1->Vz->F(temp) + exp(-pow(((p1*dx*kx + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dx;
+                }
+
+            }
+            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x && start_z!=-1){
+                for (int k=start_z; k<=end_z; k++){
+                    temp = p2,0,k;
+                    temp = global_to_local(temp);
+                    curl1->Vz->F(temp) = curl1->Vz->F(temp) - exp(-pow(((p2*dx*kx + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dx;
+                }
+
+            }
+
+
+
+            // Changes on XY plane
+            if ((r1-1)>=gridData.colloq_start_index_z && (r1-1)<=gridData.colloq_end_index_z && start_x!=-1){
+                for (int i=start_x; i<=end_x; i++){
+                    temp = i,0,(r1-1);
+                    temp = global_to_local(temp);
+                    curl2->Vx->F(temp) = curl2->Vx->F(temp) + exp(-pow(((i*dx*kx + r1*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dz;
+
+                }
+            }
+            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1){
+                for (int i=start_x; i<=end_x; i++){
+                    temp = i,0,r2;
+                    temp = global_to_local(temp);
+                    curl2->Vx->F(temp) = curl2->Vx->F(temp) - exp(-pow(((i*dx*kx + r2*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dz;
+                }
+            }
+        }
+        else{
+            // *************  if curl is not face-centered  *****************
+
+            // Changes on YZ plane
+            if (p1>=gridData.colloq_start_index_x && p1<=gridData.colloq_end_index_x && start_z!=-1){
+                for (int k=start_z; k<=end_z; k++){
+                    temp = p1,0,k;
+                    temp = global_to_local(temp);
+                    curl2->Vy->F(temp) = curl2->Vy->F(temp) - exp(-pow((((p1-0.5)*dx*kx + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dx/c/mew0;
+                }
+            }
+            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x && start_z!=-1){
+                for (int k=start_z; k<=end_z; k++){
+                    temp = p2,0,k;
+                    temp = global_to_local(temp);
+                    curl2->Vy->F(temp) = curl2->Vy->F(temp) + exp(-pow((((p2+0.5)*dx*kx + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dx/c/mew0;
+                }
+            }
+
+
+
+            // Changes on XY plane
+            if (r1>=gridData.colloq_start_index_z && r1<=gridData.colloq_end_index_z && start_x!=-1){
+                for (int i=start_x; i<=end_x; i++){
+                    temp = i,0,r1;
+                    temp = global_to_local(temp);
+                    curl1->Vy->F(temp) = curl1->Vy->F(temp) - exp(-pow(((i*dx*kx + (r1-0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dz/c/mew0;
+                }
+            }
+            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1){
+                for (int i=start_x; i<=end_x; i++){
+                    temp = i,0,r2;
+                    temp = global_to_local(temp);
+                    curl1->Vy->F(temp) = curl1->Vy->F(temp) + exp(-pow(((i*dx*kx + (r2+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dz/c/mew0;
+                }
+            }
+        }
+    }
+    else{
+        // **********************************************************************
+        // ************************  For 3-D plane wave  ************************
+        // **********************************************************************
+        if (curl1->isFaceCentered){
+            // Changes on YZ plane
+            if ((p1-1)>=gridData.colloq_start_index_x && (p1-1)<=gridData.colloq_end_index_x && start_y!=-1 && start_z!=-1){
+                for (int j=start_y; j<=end_y-1; j++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = (p1-1),j,k;
+                        temp = global_to_local(temp);
+                        curl1->Vz->F(temp) = curl1->Vz->F(temp) - exp(-pow(((p1*dx*kx + (j+0.5)*dy*ky + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dx;
+                    }
+                }
+                for (int j=start_y; j<=end_y; j++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = (p1-1),j,k;
+                        temp = global_to_local(temp);
+                        curl2->Vy->F(temp) = curl2->Vy->F(temp) - exp(-pow(((p1*dx*kx + j*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_z_dir/dx;
+                    }
+                }
+            }
+            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x && start_y!=-1 && start_z!=-1){
+                for (int j=start_y; j<=end_y-1; j++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = p2,j,k;
+                        temp = global_to_local(temp);
+                        curl1->Vz->F(temp) = curl1->Vz->F(temp) + exp(-pow(((p2*dx*kx + (j+0.5)*dy*ky + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dx;
+                    }
+                }
+                for (int j=start_y; j<=end_y; j++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = p2,j,k;
+                        temp = global_to_local(temp);
+                        curl2->Vy->F(temp) = curl2->Vy->F(temp) + exp(-pow(((p2*dx*kx + j*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_z_dir/dx;
+                    }
+                }
+            }
+
+
+            // Changes on XZ plane
+            if ((q1-1)>=gridData.colloq_start_index_y && (q1-1)<=gridData.colloq_end_index_y && start_x!=-1 && start_z!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = i,(q1-1),k;
+                        temp = global_to_local(temp);
+                        curl2->Vz->F(temp) = curl2->Vz->F(temp) - exp(-pow((((i+0.5)*dx*kx + q1*dy*ky + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_x_dir/dy;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = i,(q1-1),k;
+                        temp = global_to_local(temp);
+                        curl1->Vx->F(temp) = curl1->Vx->F(temp) - exp(-pow(((i*dx*kx + q1*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_z_dir/dy;
+                    }
+                }
+            }
+            if (q2>=gridData.colloq_start_index_y && q2<=gridData.colloq_end_index_y && start_x!=-1 && start_z!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = i,q2,k;
+                        temp = global_to_local(temp);
+                        curl2->Vz->F(temp) = curl2->Vz->F(temp) + exp(-pow((((i+0.5)*dx*kx + q2*dy*ky + k*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_x_dir/dy;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = i,q2,k;
+                        temp = global_to_local(temp);
+                        curl1->Vx->F(temp) = curl1->Vx->F(temp) + exp(-pow(((i*dx*kx + q2*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_z_dir/dy;
+                    }
+                }
+            }
+
+
+
+            // Changes on XY plane
+            if ((r1-1)>=gridData.colloq_start_index_z && (r1-1)<=gridData.colloq_end_index_z && start_x!=-1 && start_y!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int j=start_y; j<=end_y; j++){
+                        temp = i,j,(r1-1);
+                        temp = global_to_local(temp);
+                        curl1->Vy->F(temp) = curl1->Vy->F(temp) - exp(-pow((((i+0.5)*dx*kx + j*dy*ky + r1*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_x_dir/dz;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int j=start_y; j<=end_y-1; j++){
+                        temp = i,j,(r1-1);
+                        temp = global_to_local(temp);
+                        curl2->Vx->F(temp) = curl2->Vx->F(temp) - exp(-pow(((i*dx*kx + (j+0.5)*dy*ky + r1*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dz;
+                    }
+                }
+            }
+            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1 && start_y!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int j=start_y; j<=end_y; j++){
+                        temp = i,j,r2;
+                        temp = global_to_local(temp);
+                        curl1->Vy->F(temp) = curl1->Vy->F(temp) + exp(-pow((((i+0.5)*dx*kx + j*dy*ky + r2*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_x_dir/dz;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int j=start_y; j<=end_y-1; j++){
+                        temp = i,j,r2;
+                        temp = global_to_local(temp);
+                        curl2->Vx->F(temp) = curl2->Vx->F(temp) + exp(-pow(((i*dx*kx + (j+0.5)*dy*ky + r2*dz*kz) + init*dx -(timestep-0.5)*c*dt),2)/sigma)*E_y_dir/dz;
+                    }
+                }
+            }
+        }
+        else{
+            // *************  if curl is not face-centered  *****************
+
+            // Changes on YZ plane
+            if (p1>=gridData.colloq_start_index_x && p1<=gridData.colloq_end_index_x && start_y!=-1 && start_z!=-1){
+                for (int j=start_y; j<=end_y-1; j++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = p1,j,k;
+                        temp = global_to_local(temp);
+                        curl2->Vy->F(temp) = curl2->Vy->F(temp) - exp(-pow((((p1-0.5)*dx*kx + (j+0.5)*dy*ky + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dx/c/mew0;
+                    }
+                }
+                for (int j=start_y; j<=end_y; j++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = p1,j,k;
+                        temp = global_to_local(temp);
+                        curl1->Vz->F(temp) = curl1->Vz->F(temp) - exp(-pow((((p1-0.5)*dx*kx + j*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_y_dir/dx/c/mew0;
+                    }
+                }
+            }
+            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x && start_y!=-1 && start_z!=-1){
+                for (int j=start_y; j<=end_y-1; j++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = p2,j,k;
+                        temp = global_to_local(temp);
+                        curl2->Vy->F(temp) = curl2->Vy->F(temp) + exp(-pow((((p2+0.5)*dx*kx + (j+0.5)*dy*ky + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dx/c/mew0;
+                    }
+                }
+                for (int j=start_y; j<=end_y; j++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = p2,j,k;
+                        temp = global_to_local(temp);
+                        curl1->Vz->F(temp) = curl1->Vz->F(temp) + exp(-pow((((p2+0.5)*dx*kx + j*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_y_dir/dx/c/mew0;
+                    }
+                }
+            }
+
+
+            // Changes on XZ plane
+            if (q1>=gridData.colloq_start_index_y && q1<=gridData.colloq_end_index_y && start_x!=-1 && start_z!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = i,q1,k;
+                        temp = global_to_local(temp);
+                        curl1->Vx->F(temp) = curl1->Vx->F(temp) - exp(-pow((((i+0.5)*dx*kx + (q1-0.5)*dy*ky + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dy/c/mew0;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = i,q1,k;
+                        temp = global_to_local(temp);
+                        curl2->Vz->F(temp) = curl2->Vz->F(temp) - exp(-pow(((i*dx*kx + (q1-0.5)*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dy/c/mew0;
+                    }
+                }
+            }
+            if (q2>=gridData.colloq_start_index_y && q2<=gridData.colloq_end_index_y && start_x!=-1 && start_z!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int k=start_z; k<=end_z; k++){
+                        temp = i,q2,k;
+                        temp = global_to_local(temp);
+                        curl1->Vx->F(temp) = curl1->Vx->F(temp) + exp(-pow((((i+0.5)*dx*kx + (q2+0.5)*dy*ky + k*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_z_dir/dy/c/mew0;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int k=start_z; k<=end_z-1; k++){
+                        temp = i,q2,k;
+                        temp = global_to_local(temp);
+                        curl2->Vz->F(temp) = curl2->Vz->F(temp) + exp(-pow(((i*dx*kx + (q2+0.5)*dy*ky + (k+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dy/c/mew0;
+                    }
+                }
+            }
+
+
+
+            // Changes on XY plane
+            if (r1>=gridData.colloq_start_index_z && r1<=gridData.colloq_end_index_z && start_x!=-1 && start_y!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int j=start_y; j<=end_y; j++){
+                        temp = i,j,r1;
+                        temp = global_to_local(temp);
+                        curl2->Vx->F(temp) = curl2->Vx->F(temp) - exp(-pow((((i+0.5)*dx*kx + j*dy*ky + (r1-0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_y_dir/dz/c/mew0;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int j=start_y; j<=end_y-1; j++){
+                        temp = i,j,r1;
+                        temp = global_to_local(temp);
+                        curl1->Vy->F(temp) = curl1->Vy->F(temp) - exp(-pow(((i*dx*kx + (j+0.5)*dy*ky + (r1-0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dz/c/mew0;
+                    }
+                }
+            }
+            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1 && start_y!=-1){
+                for (int i=start_x; i<=end_x-1; i++){
+                    for (int j=start_y; j<=end_y; j++){
+                        temp = i,j,r2;
+                        temp = global_to_local(temp);
+                        curl2->Vx->F(temp) = curl2->Vx->F(temp) + exp(-pow((((i+0.5)*dx*kx + j*dy*ky + (r2+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_y_dir/dz/c/mew0;
+                    }
+                }
+                for (int i=start_x; i<=end_x; i++){
+                    for (int j=start_y; j<=end_y-1; j++){
+                        temp = i,j,r2;
+                        temp = global_to_local(temp);
+                        curl1->Vy->F(temp) = curl1->Vy->F(temp) + exp(-pow(((i*dx*kx + (j+0.5)*dy*ky + (r2+0.5)*dz*kz) + init*dx -(timestep)*c*dt),2)/sigma)*H_x_dir/dz/c/mew0;
+                    }
+                }
+            }
+        }
+    }
+}
 
 
 
 void maxwell::plane_wave_initialise(){
-    if (gridData.isPlanar){
-        int count = 0, index = 0, start_x = -1, end_x = -1, start_z = -1, end_z = -1;
-        blitz::TinyVector<int,3> temp;
-        if (p1>gridData.colloq_end_index_x){
+
+    start_x=-1, end_x=-1, start_y=-1, end_y=-1, start_z=-1, end_z=-1;
+
+    if (p1>gridData.colloq_end_index_x){
+        start_x = -1;
+        end_x = -1;
+    }
+    else if(p1>=gridData.colloq_start_index_x){
+        start_x = p1;
+        if (p2>gridData.colloq_end_index_x){
+            end_x = gridData.colloq_end_index_x;
+        }
+        else{
+            end_x = p2;
+        }
+    }
+    else{
+        if(p2>gridData.colloq_end_index_x){
+            start_x = gridData.colloq_start_index_x;
+            end_x = gridData.colloq_end_index_x;
+        }
+        else if (p2>=gridData.colloq_start_index_x){
+            start_x = gridData.colloq_start_index_x;
+            end_x = p2;
+        }
+        else{
             start_x = -1;
             end_x = -1;
         }
-        else if(p1>=gridData.colloq_start_index_x){
-            std::cout<<"rank was here: "<<mpi.rank<<std::endl;
-            start_x = p1;
-            if (p2>gridData.colloq_end_index_x){
-                end_x = gridData.colloq_end_index_x;
-            }
-            else{
-                end_x = p2;
-            }
+    }
+
+
+
+    if (q1>gridData.colloq_end_index_y){
+        start_y = -1;
+        end_y = -1;
+    }
+    else if(q1>=gridData.colloq_start_index_y){
+        start_y = q1;
+        if (q2>gridData.colloq_end_index_y){
+            end_y = gridData.colloq_end_index_y;
         }
         else{
-            if(p2>gridData.colloq_end_index_x){
-                start_x = gridData.colloq_start_index_x;
-                end_x = gridData.colloq_end_index_x;
-            }
-            else if (p2>=gridData.colloq_start_index_x){
-                start_x = gridData.colloq_start_index_x;
-                end_x = p2;
-            }
-            else{
-                start_x = -1;
-                end_x = -1;
-            }
+            end_y = q2;
         }
-        if (r1>gridData.colloq_end_index_z){
+    }
+    else{
+        if(q2>gridData.colloq_end_index_y){
+            start_y = gridData.colloq_start_index_y;
+            end_y = gridData.colloq_end_index_y;
+        }
+        else if (q2>=gridData.colloq_start_index_y){
+            start_y = gridData.colloq_start_index_y;
+            end_y = q2;
+        }
+        else{
+            start_y = -1;
+            end_y = -1;
+        }
+    }
+
+    if (r1>gridData.colloq_end_index_z){
+        start_z = -1;
+        end_z = -1;
+    }
+    else if(r1>=gridData.colloq_start_index_z){
+        start_z = r1;
+        if (r2>gridData.colloq_end_index_z){
+            end_z = gridData.colloq_end_index_z;
+        }
+        else{
+            end_z = r2;
+        }
+    }
+    else{
+        if(r2>gridData.colloq_end_index_z){
+            start_z = gridData.colloq_start_index_z;
+            end_z = gridData.colloq_end_index_z;
+        }
+        else if (r2>=gridData.colloq_start_index_z){
+            start_z = gridData.colloq_start_index_z;
+            end_z = r2;
+        }
+        else{
             start_z = -1;
             end_z = -1;
         }
-        else if(r1>=gridData.colloq_start_index_z){
-            start_z = r1;
-            if (r2>gridData.colloq_end_index_z){
-                end_z = gridData.colloq_end_index_z;
-            }
-            else{
-                end_z = r2;
-            }
-        }
-        else{
-            if(r2>gridData.colloq_end_index_z){
-                start_z = gridData.colloq_start_index_z;
-                end_z = gridData.colloq_end_index_z;
-            }
-            else if (r2>=gridData.colloq_start_index_z){
-                start_z = gridData.colloq_start_index_z;
-                end_z = r2;
-            }
-            else{
-                start_z = -1;
-                end_z = -1;
-            }
-        }
-        // std::cout<<"p1:"<<p1<<", p2:"<<p2<<", r1:"<<r1<<", r2:"<<r2<<std::endl;
-
-        //Face centered curl for H part
-            //Hx will be updated in front and back faces
-            //For front face (j=q1 and i=p1...p2)
-            if (r1>=gridData.colloq_start_index_z && r1<=gridData.colloq_end_index_z && start_x!=-1){
-                count = end_x - start_x + 1;
-            }
-            //For back face (j=r2 and i=p1...p2)
-            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1){
-                count = count + end_x - start_x + 1;
-            }
-            // std::cout<<"rank:"<<mpi.rank<<", start_x="<<start_x<<std::endl;
-            // std::cout<<"rank:"<<mpi.rank<<",end_x="<<end_x<<std::endl;
-            // std::cout<<"rank:"<<mpi.rank<<",start_z="<<start_z<<std::endl;
-            // std::cout<<"rank:"<<mpi.rank<<",end_z="<<end_z<<std::endl;
-            // std::cout<<"rank:"<<mpi.rank<<",count="<<count<<std::endl;
-            if (start_x!=-1){
-                H_x_pw_index.resize(count);
-                H_x_pw_coeff.resize(count);
-                H_x_pw_sign.resize(count);
-            }
-            if (r1>=gridData.colloq_start_index_z && r1<=gridData.colloq_end_index_z && start_x!=-1){
-                for (int i=start_x; i<=end_x; i++){
-                    temp = i,0,r1-1;
-                    H_x_pw_index(index) = global_to_local(temp);
-                    H_x_pw_coeff(index) = (i*dx*kx + r1*dz*kz) + init*dx;
-                    H_x_pw_sign(index) = 1;
-                    index = index + 1;
-                }
-            }
-            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1){
-                for (int i=start_x; i<=end_x; i++){
-                    temp = i,0,r2;
-                    H_x_pw_index(index) = global_to_local(temp);
-                    H_x_pw_coeff(index) = (i*dx*kx + r2*dz*kz) + init*dx;
-                    H_x_pw_sign(index) = -1;
-                    index = index + 1;
-                }
-            }
-
-
-
-            count = 0; index = 0;
-            //Hz will be updated in left and right faces
-            //For left face (i=p1 and j=r1...r2)
-            if (p1>=gridData.colloq_start_index_x && p1<=gridData.colloq_end_index_x && start_z!=-1){
-                count = end_z - start_z + 1;
-            }
-            //For right face (i=p2 and j=r1...r2)
-            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x && start_z!=-1){
-                count = count + end_z - start_z + 1;
-            }
-            if (start_z!=-1){
-                H_z_pw_index.resize(count);
-                H_z_pw_coeff.resize(count);
-                H_z_pw_sign.resize(count);
-            }
-            if (p1>=gridData.colloq_start_index_x && p1<=gridData.colloq_end_index_x && start_z!=-1){
-                for (int j=start_z; j<=end_z; j++){
-                    temp = p1-1,0,j;
-                    H_z_pw_index(index) = global_to_local(temp);
-                    H_z_pw_coeff(index) = (p1*dx*kx + j*dz*kz) + init*dx;
-                    H_z_pw_sign(index) = -1;
-                    index = index + 1;
-                }
-            }
-            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x && start_z!=-1){
-                for (int j=start_z; j<=end_z; j++){
-                    temp = p2,0,j;
-                    H_z_pw_index(index) = global_to_local(temp);
-                    H_z_pw_coeff(index) = (p2*dx*kx + j*dz*kz) + init*dx;
-                    H_z_pw_sign(index) = 1;
-                    index = index + 1;
-                }
-            }
-
-
-        count = 0; index = 0;
-        //Now updation of non-facecentered or E component
-            //Front face ((j=r1 and i=p1...p2))
-            if (r1>=gridData.colloq_start_index_z && r1<=gridData.colloq_end_index_z && start_x!=-1){
-                count = end_x - start_x + 1;
-            }
-            //For back face (j=r2 and i=p1...p2)
-            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1){
-                count = count + end_x - start_x + 1;
-            }
-
-            if (start_x!=-1){
-                E_y_pw_index1.resize(count);
-                E_y_pw_coeff1.resize(count);
-                E_y_pw_sign1.resize(count);
-            }
-            if (r1>=gridData.colloq_start_index_z && r1<=gridData.colloq_end_index_z && start_x!=-1){
-                for (int i=start_x; i<=end_x; i++){
-                    temp = i,0,r1;
-                    E_y_pw_index1(index) = global_to_local(temp);
-                    E_y_pw_coeff1(index) = (i*dx*kx + (r1-0.5)*dz*kz) + init*dx;
-                    E_y_pw_sign1(index) = -1;
-                    index = index + 1;
-                }
-            }
-            if (r2>=gridData.colloq_start_index_z && r2<=gridData.colloq_end_index_z && start_x!=-1){
-                for (int i=start_x; i<=end_x; i++){
-                    temp = i,0,r2;
-                    E_y_pw_index1(index) = global_to_local(temp);
-                    E_y_pw_coeff1(index) = (i*dx*kx + (r2+0.5)*dz*kz) + init*dx;
-                    E_y_pw_sign1(index) = 1;
-                    index = index + 1;
-                }
-            }
-
-            count = 0; index = 0;
-
-
-            //For left face (i=p1 and j=r1...r2)
-            if (p1>=gridData.colloq_start_index_x && p1<=gridData.colloq_end_index_x  && start_z!=-1){
-                count = end_z - start_z + 1;
-            }
-            //For right face (i=p2 and j=r1...r2)
-            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x  && start_z!=-1){
-                count = count + end_z - start_z + 1;
-            }
-
-            if (start_z!=-1){
-                E_y_pw_index2.resize(count);
-                E_y_pw_coeff2.resize(count);
-                E_y_pw_sign2.resize(count);
-            }
-            if (p1>=gridData.colloq_start_index_x && p1<=gridData.colloq_end_index_x  && start_z!=-1){
-                for (int j=start_z; j<=end_z; j++){
-                    temp = p1,0,j;
-                    E_y_pw_index2(index) = global_to_local(temp);
-                    E_y_pw_coeff2(index) = ((p1-0.5)*dx*kx + j*dz*kz) + init*dx;
-                    E_y_pw_sign2(index) = 1;
-                    index = index + 1;
-                }
-            }
-            if (p2>=gridData.colloq_start_index_x && p2<=gridData.colloq_end_index_x  && start_z!=-1){
-                for (int j=start_z; j<=end_z; j++){
-                    temp = p2,0,j;
-                    E_y_pw_index2(index) = global_to_local(temp);
-                    E_y_pw_coeff2(index) = ((p2+0.5)*dx*kx + j*dz*kz) + init*dx;
-                    E_y_pw_sign2(index) = -1;
-                    index = index + 1;
-                }
-            }
     }
-}
 
+
+    // std::cout<<"Rank: "<<mpi.rank<<", X-start: "<<start_x<<std::endl;
+    // std::cout<<"Rank: "<<mpi.rank<<", X-end: "<<end_x<<std::endl;
+    // std::cout<<"Rank: "<<mpi.rank<<", Y-start: "<<start_y<<std::endl;
+    // std::cout<<"Rank: "<<mpi.rank<<", Y-end: "<<end_y<<std::endl;
+    // std::cout<<"Rank: "<<mpi.rank<<", Z-start: "<<start_z<<std::endl;
+    // std::cout<<"Rank: "<<mpi.rank<<", Z-end: "<<end_z<<std::endl;
+    //
+    // std::cout<<"Rank: "<<mpi.rank<<", Colloq X-start: "<<gridData.colloq_start_index_x<<std::endl;
+    // std::cout<<"Rank: "<<mpi.rank<<", Colloq X-end: "<<gridData.colloq_end_index_x<<std::endl;
+    // std::cout<<"Rank: "<<mpi.rank<<", Colloq Y-start: "<<gridData.colloq_start_index_y<<std::endl;
+    // std::cout<<"Rank: "<<mpi.rank<<", Colloq Y-end: "<<gridData.colloq_end_index_y<<std::endl;
+    // std::cout<<"Rank: "<<mpi.rank<<", Colloq Z-start: "<<gridData.colloq_start_index_z<<std::endl;
+    // std::cout<<"Rank: "<<mpi.rank<<", Colloq Z-end: "<<gridData.colloq_end_index_z<<std::endl;
+}
 
 
 
@@ -954,12 +1504,14 @@ bool maxwell::check_global_limits(blitz::TinyVector<int,3> v, bool xstag, bool y
 }
 
 
+
 blitz::TinyVector<int,3> maxwell::global_to_local(blitz::TinyVector<int,3> glob){
     blitz::TinyVector<int,3> loc = glob;
     loc(0) = glob(0) - gridData.colloq_start_index_x;
     loc(1) = glob(1) - gridData.colloq_start_index_y;
     return loc;
 }
+
 
 
 int maxwell::sigma_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, double m_pml,double sigma_max){
@@ -1008,6 +1560,7 @@ int maxwell::sigma_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml
   w=(temp>=(N-d))*pow((temp-N+d)/(d-1),m_pml)*sigma_max+(temp<(N-d))*w;
   return 0;
 }
+
 
 
 int maxwell::k_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, double m_pml,double k_max){
@@ -1060,6 +1613,7 @@ int maxwell::k_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, do
 }
 
 
+
 int maxwell::a_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, double ma_pml,double a_max){
     double delta=0;
     int N=0;
@@ -1109,6 +1663,7 @@ int maxwell::a_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, do
 }
 
 
+
 int maxwell::b_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, double ma_pml, double m_pml, double k_max, double sigma_max, double a_max){
   blitz::Array<double,1> temp_sigma, temp_a, temp_k;
   int N=0;
@@ -1145,6 +1700,7 @@ int maxwell::b_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, do
 
   return 0;
 }
+
 
 
 int maxwell::c_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, double ma_pml, double m_pml, double k_max, double sigma_max, double a_max){

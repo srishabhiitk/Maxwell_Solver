@@ -26,13 +26,15 @@ class maxwell {
         reader &inputData;
         parallel &mpi;
         grid &gridData;
+        bool usePW;
         blitz::Array<blitz::TinyVector<int,3>,1> H_x_pw_index, H_z_pw_index, E_y_pw_index1, E_y_pw_index2;
         blitz::Array<double,1> H_x_pw_coeff, H_z_pw_coeff, E_y_pw_coeff1, E_y_pw_coeff2;
         blitz::Array<int,1> H_x_pw_sign, H_z_pw_sign, E_y_pw_sign1, E_y_pw_sign2;
-        double H_x_dir, H_z_dir, E_y_dir;
+        double H_x_dir, H_y_dir, H_z_dir, E_x_dir, E_y_dir, E_z_dir;
         double kx, ky, kz;
         blitz::TinyVector<int,3> pw_start_cord, pw_end_cord;
-        int p1,p2,r1,r2;
+        int p1,p2,q1,q2,r1,r2;
+        int start_x, end_x, start_y, end_y, start_z, end_z;
 
         maxwell(reader &_inputData, parallel &_mpi, grid &_gridData);
         void solve();
@@ -41,6 +43,7 @@ class maxwell {
         void solve_planar();
         void solve_planar_pml();
         void plane_wave_execute(vfield *curl, int timestep);
+        void plane_wave_execute(vfield *curl1, vfield *curl2, int timestep);
         void plane_wave_initialise();
         int sigma_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, double m_pml,double sigma_max);
         int k_fn(int dim, bool is_E, blitz::Array<double,1> w, double d_pml, double m_pml,double k_max);
